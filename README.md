@@ -43,16 +43,16 @@ PASS can be installed and operated **without manually cloning the GitHub reposit
 #### Windows (PowerShell):
 Open PowerShell and run:
 ```powershell
-irm https://raw.githubusercontent.com/adityasing9/Pass/main/install.ps1 | iex
+irm tinyurl.com/passx-win | iex
 ```
-> **Optional shortcut:** `irm tinyurl.com/passx-win | iex`
+> *(Optional direct GitHub link: `irm https://raw.githubusercontent.com/adityasing9/Pass/main/install.ps1 | iex`)*
 
 #### Linux & Android Termux (Bash):
 Open terminal and run:
 ```bash
-curl -sSL https://raw.githubusercontent.com/adityasing9/Pass/main/install.sh | bash
+curl -sSL tinyurl.com/passx-linux | bash
 ```
-> **Optional shortcut:** `curl -sSL tinyurl.com/passx-linux | bash`
+> *(Optional direct GitHub link: `curl -sSL https://raw.githubusercontent.com/adityasing9/Pass/main/install.sh | bash`)*
 
 ---
 
