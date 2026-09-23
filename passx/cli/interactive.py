@@ -38,27 +38,45 @@ def interactive_menu(
         console.print("[bold cyan]6.[/bold cyan] Exit")
         console.print()
 
-        choice = Prompt.ask("Select an option", choices=["1", "2", "3", "4", "5", "6"], default="1")
+        raw_choice = Prompt.ask("Select an option", default="1").strip()
+        cleaned = raw_choice
+        if cleaned.lower().startswith("passx "):
+            cleaned = cleaned[6:].strip()
 
-        if choice == "1":
-            _handle_send_interactive(config, identity, trust_manager)
-        elif choice == "2":
+        # Parse command or menu number
+        parts = cleaned.split(maxsplit=1)
+        cmd = parts[0].lower() if parts else "1"
+        arg = parts[1] if len(parts) > 1 else None
+
+        if cmd in ("1", "send"):
+            _handle_send_interactive(config, identity, trust_manager, initial_path=arg)
+        elif cmd in ("2", "receive", "recv"):
             _handle_receive_interactive(config, identity, trust_manager)
-        elif choice == "3":
+        elif cmd in ("3", "devices", "scan", "list"):
             _handle_devices_interactive(config, identity)
-        elif choice == "4":
+        elif cmd in ("4", "trust"):
             _handle_trust_interactive(trust_manager)
-        elif choice == "5":
+        elif cmd in ("5", "settings", "status", "config"):
             _handle_settings_interactive(config, identity)
-        elif choice == "6":
+        elif cmd in ("6", "exit", "quit", "q"):
             console.print("[green]Goodbye![/green]")
             break
+        else:
+            console.print(f"[yellow]Unknown option '{raw_choice}'. Please enter 1-6 or a command like 'send', 'receive', 'devices', 'exit'.[/yellow]")
 
         Prompt.ask("\n[dim]Press Enter to return to menu...[/dim]", default="")
 
 
-def _handle_send_interactive(config: ConfigManager, identity: DeviceIdentity, trust_manager: TrustManager):
-    raw_path = Prompt.ask("\nEnter file or directory path to send").strip()
+def _handle_send_interactive(
+    config: ConfigManager,
+    identity: DeviceIdentity,
+    trust_manager: TrustManager,
+    initial_path: str = None,
+):
+    if initial_path:
+        raw_path = initial_path.strip()
+    else:
+        raw_path = Prompt.ask("\nEnter file or directory path to send").strip()
     # Strip quotes if copied from terminal
     raw_path = raw_path.strip("\"'")
     target_path = Path(os.path.expanduser(raw_path))
