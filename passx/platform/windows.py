@@ -22,10 +22,10 @@ class WindowsPlatform(BasePlatform):
     def get_default_download_dir(self) -> Path:
         user_profile = os.environ.get("USERPROFILE")
         if user_profile:
-            downloads = Path(user_profile) / "Downloads"
+            desktop = Path(user_profile) / "Desktop"
         else:
-            downloads = Path.home() / "Downloads"
-        return downloads / "PASS"
+            desktop = Path.home() / "Desktop"
+        return desktop
 
     def get_device_name(self) -> str:
         name = socket.gethostname().split(".")[0].strip()

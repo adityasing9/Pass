@@ -283,7 +283,7 @@ PASS operates via two independent networking pipelines:
 
 ### Windows 10/11
 - Automatically derives device name from host computer name.
-- Default downloads saved to `%USERPROFILE%\Downloads\PASS`.
+- Default downloads saved to `%USERPROFILE%\Desktop`.
 - **Firewall Note**: Allow Python or `passx` through Windows Defender Firewall for UDP port 42424 and TCP port 42425.
 
 ### Linux (Ubuntu / Debian / Arch / Fedora)
