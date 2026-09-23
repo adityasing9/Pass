@@ -74,19 +74,20 @@ def _handle_send_interactive(
     initial_path: str = None,
 ):
     if initial_path:
-        raw_path = initial_path.strip()
+        raw_path = initial_path.strip().strip("\"'")
+        target_path = current_platform.resolve_smart_path(raw_path)
+        if not target_path.exists():
+            console.print(f"[red]Error: Path '{target_path}' does not exist.[/red]")
+            return
+        target_paths = [target_path]
     else:
-        raw_path = Prompt.ask("\nEnter file or directory path to send").strip()
-    # Strip quotes if copied from terminal
-    raw_path = raw_path.strip("\"'")
-    target_path = current_platform.resolve_smart_path(raw_path)
-
-    if not target_path.exists():
-        console.print(f"[red]Error: Path '{target_path}' does not exist.[/red]")
-        return
+        from .picker import select_files_interactively
+        target_paths = select_files_interactively()
+        if not target_paths:
+            return
 
     try:
-        manifest = build_manifest_from_paths([target_path])
+        manifest = build_manifest_from_paths(target_paths)
     except Exception as e:
         console.print(f"[red]Failed to build transfer manifest: {e}[/red]")
         return

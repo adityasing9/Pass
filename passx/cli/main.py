@@ -36,12 +36,18 @@ def setup_logging(debug: bool = False) -> None:
 
 
 def cmd_send(args, config: ConfigManager, identity: DeviceIdentity, trust_manager: TrustManager) -> int:
-    """Handle 'passx send <path>...'"""
-    paths = [current_platform.resolve_smart_path(p) for p in args.paths]
-    for p in paths:
-        if not p.exists():
-            console.print(f"[red]Error: Source path '{p}' does not exist.[/red]")
-            return 1
+    """Handle 'passx send [path...]'"""
+    if args.paths:
+        paths = [current_platform.resolve_smart_path(p) for p in args.paths]
+        for p in paths:
+            if not p.exists():
+                console.print(f"[red]Error: Source path '{p}' does not exist.[/red]")
+                return 1
+    else:
+        from .picker import select_files_interactively
+        paths = select_files_interactively()
+        if not paths:
+            return 0
 
     try:
         manifest = build_manifest_from_paths(paths)
@@ -241,7 +247,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # send
     send_p = subparsers.add_parser("send", help="Send file(s) or directory to a nearby PASS device")
-    send_p.add_argument("paths", nargs="+", help="File or folder path(s) to transfer")
+    send_p.add_argument("paths", nargs="*", help="File or folder path(s) to transfer (omit to browse/select interactively)")
     send_p.add_argument("--to", help="Destination device name or ID (skips selection prompt)")
 
     # receive

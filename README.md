@@ -152,12 +152,21 @@ Select an option [1/2/3/4/5/6] (1):
 
 #### Step-by-Step: How to Send a File in the Menu:
 
-1. **Select Option 1**: Type `1` and press **Enter** (or simply press **Enter**, as `1` is default).
-2. **Enter the Path**: PASS will ask for the path:
+1. **Select Option 1**: Type `1` and press **Enter** (or simply press **Enter** for default).
+2. **Select File(s) or Folders Visually (No Typing Needed!)**:
+   PASS displays an interactive menu so you can pick files with numbers instead of typing paths:
    ```text
-   Enter file or directory path to send: C:\Users\AADI\Desktop\my_file.zip
+   Select where to pick files from:
+   1. 📸 Camera Photos (on Termux / Android)
+   2. 📥 Downloads Folder
+   3. 🖥️ Desktop Folder (on Windows)
+   4. 📂 Browse Current Directory
+   5. 🗂️ Browse Any Directory
+   6. ✍️ Enter path manually
    ```
-   > 💡 **Tip:** On Windows, Linux, and macOS, you can simply **drag and drop** the file from File Explorer directly into the terminal window to paste its full path!
+   - Selecting **Camera** or **Downloads** displays a numbered list of your recent files (`1, 2, 3...`). Simply type the number(s) to send!
+   - Selecting **Browse Directory** lets you explore folders and send entire directories.
+   - On Windows, you can even open the native File Explorer chooser!
 3. **Select Target Device**: PASS automatically discovers nearby devices and shows a numbered list:
    ```text
    Discovered PASS Devices (2)
