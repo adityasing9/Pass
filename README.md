@@ -34,17 +34,78 @@ passx
 
 ---
 
-## 3. Installation
+## 3. Installation & Usage (No Git Clone Required)
 
-### From Source (Editable Mode)
+PASS can be installed and operated **without manually cloning the GitHub repository**. Choose whichever method best suits your environment:
+
+### Method A: One-Line Automatic Installers (Recommended)
+
+#### Windows (PowerShell):
+Open PowerShell and run:
+```powershell
+irm https://raw.githubusercontent.com/adityasing9/Pass/main/install.ps1 | iex
+```
+
+#### Linux & Android Termux (Bash):
+Open terminal and run:
+```bash
+curl -sSL https://raw.githubusercontent.com/adityasing9/Pass/main/install.sh | bash
+```
+
+---
+
+### Method B: Direct `pip install` from GitHub (No Git Needed)
+
+If you have Python installed, you do not need Git at all. Install directly from GitHub's release tarball:
 
 ```bash
-git clone https://github.com/adityasing9/SettleHub.git
-cd SettleHub
+pip install https://github.com/adityasing9/Pass/archive/refs/heads/main.zip
+```
+
+Or if Git is installed on your machine:
+```bash
+pip install git+https://github.com/adityasing9/Pass.git
+```
+
+---
+
+### Method C: Standalone Executable (No Python or Git Needed)
+
+You can run PASS as a self-contained single-file binary without installing Python or Git:
+
+- **Windows**: Download `passx-windows-amd64.exe` from [GitHub Releases](https://github.com/adityasing9/Pass/releases), rename to `passx.exe`, and run directly in any terminal:
+  ```powershell
+  .\passx.exe
+  ```
+- **Linux**: Download `passx-linux-amd64` from [GitHub Releases](https://github.com/adityasing9/Pass/releases), make it executable, and move it to your path:
+  ```bash
+  chmod +x passx-linux-amd64
+  sudo mv passx-linux-amd64 /usr/local/bin/passx
+  ```
+
+#### Build Your Own Standalone Binary
+To compile a standalone binary yourself:
+```bash
+pip install pyinstaller
+pyinstaller --onefile --name passx passx/__main__.py
+# Binary is generated at dist/passx.exe (Windows) or dist/passx (Linux)
+```
+
+---
+
+### Method D: Install from Source (For Developers)
+
+```bash
+git clone https://github.com/adityasing9/Pass.git
+cd Pass
 pip install -e .
 ```
 
+---
+
 ### Verification
+
+Check that PASS is installed and ready:
 
 ```bash
 passx version
