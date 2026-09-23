@@ -64,20 +64,55 @@ def cmd_send(args, config: ConfigManager, identity: DeviceIdentity, trust_manage
             peers = discovery.scan(timeout=1.5)
             target_peer = discovery.find_peer(args.to)
             if not target_peer:
-                console.print(f"[red]Device '{args.to}' not found on the local network.[/red]")
-                return 1
+                # Check if args.to is an IP address
+                is_ip = False
+                try:
+                    import ipaddress
+                    ipaddress.ip_address(args.to)
+                    is_ip = True
+                except ValueError:
+                    pass
+
+                if is_ip:
+                    from passx.discovery.beacon import PeerInfo
+                    console.print(f"[yellow]'{args.to}' not discovered via broadcast. Connecting directly via TCP...[/yellow]")
+                    target_peer = PeerInfo(
+                        device_id="direct-ip",
+                        device_name=args.to,
+                        platform="unknown",
+                        ip=args.to,
+                        port=config.transfer_port,
+                        fingerprint="",
+                        capabilities=[],
+                    )
+                else:
+                    console.print(f"[red]Device '{args.to}' not found on the local network.[/red]")
+                    console.print("[dim]Tip: Check if the receiving device is running 'passx receive' or specify its IP address (e.g. --to 192.168.1.105).[/dim]")
+                    return 1
         else:
             console.print("[cyan]Discovering nearby PASS devices on local network...[/cyan]")
             peers = discovery.scan(timeout=2.0)
             if not peers:
-                console.print("[yellow]No PASS devices found on the local network.[/yellow]")
-                console.print("[dim]Ensure the destination device is running 'passx' or 'passx receive'.[/dim]")
-                return 1
-
-            print_devices_table(peers)
-            choices = [str(i) for i in range(1, len(peers) + 1)]
-            selected_idx = Prompt.ask("Select device number to send to", choices=choices, default="1")
-            target_peer = peers[int(selected_idx) - 1]
+                console.print("[yellow]No PASS devices found automatically on the local network.[/yellow]")
+                console.print("[dim]Tip: Ensure the destination device is running 'passx receive' on the same Wi-Fi or Hotspot.[/dim]")
+                direct_ip = Prompt.ask("\nEnter receiver IP address directly (or press Enter to cancel)", default="").strip()
+                if not direct_ip:
+                    return 1
+                from passx.discovery.beacon import PeerInfo
+                target_peer = PeerInfo(
+                    device_id="direct-ip",
+                    device_name=direct_ip,
+                    platform="unknown",
+                    ip=direct_ip,
+                    port=config.transfer_port,
+                    fingerprint="",
+                    capabilities=[],
+                )
+            else:
+                print_devices_table(peers)
+                choices = [str(i) for i in range(1, len(peers) + 1)]
+                selected_idx = Prompt.ask("Select device number to send to", choices=choices, default="1")
+                target_peer = peers[int(selected_idx) - 1]
 
     console.print(f"[cyan]Connecting directly to [bold]{target_peer.device_name}[/bold] ({target_peer.ip}:{target_peer.port})...[/cyan]")
 
@@ -109,8 +144,15 @@ def cmd_receive(args, config: ConfigManager, identity: DeviceIdentity, trust_man
     if args.dir:
         config.download_dir = Path(os.path.expanduser(args.dir))
 
+    from passx.network.interfaces import get_active_ipv4_interfaces
+    ifaces = get_active_ipv4_interfaces()
+    ip_list = ", ".join(ip for _, ip, _ in ifaces if not ip.startswith("127."))
+    if not ip_list:
+        ip_list = "0.0.0.0"
+
     console.print(f"[bold cyan]PASS Receiver Ready[/bold cyan]")
     console.print(f"Device Name: [green]{identity.device_name}[/green]")
+    console.print(f"Local IP(s):  [bold green]{ip_list}[/bold green]")
     console.print(f"Download Directory: [cyan]{config.download_dir}[/cyan]")
     console.print(f"Transfer Port: [yellow]{config.transfer_port}[/yellow]")
     console.print("[dim]Listening for incoming file transfers... (Press Ctrl+C to exit)[/dim]\n")

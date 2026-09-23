@@ -131,7 +131,7 @@ class Listener:
             return list(self._peers.values())
 
     def find_peer(self, identifier: str) -> Optional[PeerInfo]:
-        """Find peer by full or partial UUID or friendly device name (case-insensitive)"""
+        """Find peer by full or partial UUID or friendly device name or IP (case-insensitive)"""
         self.prune_expired()
         ident_lower = identifier.lower().strip()
         with self._lock:
@@ -139,5 +139,7 @@ class Listener:
                 if peer.device_id.lower() == ident_lower or peer.device_id.lower().startswith(ident_lower):
                     return peer
                 if peer.device_name.lower() == ident_lower:
+                    return peer
+                if peer.ip == ident_lower:
                     return peer
         return None

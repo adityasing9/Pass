@@ -102,14 +102,26 @@ def _handle_send_interactive(
         peers = discovery.scan(timeout=2.0)
 
     if not peers:
-        console.print("[yellow]No PASS devices found on your local network.[/yellow]")
-        console.print("[dim]Ensure the receiving device has PASS open or is running 'passx receive'.[/dim]")
-        return
-
-    print_devices_table(peers)
-    peer_choices = [str(i) for i in range(1, len(peers) + 1)]
-    peer_idx = Prompt.ask("Select device number", choices=peer_choices, default="1")
-    selected_peer = peers[int(peer_idx) - 1]
+        console.print("[yellow]No PASS devices found automatically on your local network.[/yellow]")
+        console.print("[dim]Tip: Ensure the receiving device is on the same Wi-Fi/Hotspot and running 'passx receive' (Option 2).[/dim]")
+        manual_ip = Prompt.ask("\nEnter receiver IP address manually (or press Enter to cancel)", default="").strip()
+        if not manual_ip:
+            return
+        from passx.discovery.beacon import PeerInfo
+        selected_peer = PeerInfo(
+            device_id="direct-ip",
+            device_name=manual_ip,
+            platform="unknown",
+            ip=manual_ip,
+            port=config.transfer_port,
+            fingerprint="",
+            capabilities=[],
+        )
+    else:
+        print_devices_table(peers)
+        peer_choices = [str(i) for i in range(1, len(peers) + 1)]
+        peer_idx = Prompt.ask("Select device number", choices=peer_choices, default="1")
+        selected_peer = peers[int(peer_idx) - 1]
 
     console.print(f"\n[cyan]Connecting to [bold]{selected_peer.device_name}[/bold] ({selected_peer.ip}:{selected_peer.port})...[/cyan]")
 
@@ -133,8 +145,17 @@ def _handle_send_interactive(
 
 
 def _handle_receive_interactive(config: ConfigManager, identity: DeviceIdentity, trust_manager: TrustManager):
+    from passx.network.interfaces import get_active_ipv4_interfaces
+    ifaces = get_active_ipv4_interfaces()
+    ip_str = ", ".join(ip for _, ip, _ in ifaces if not ip.startswith("127."))
+    if not ip_str:
+        ip_str = "0.0.0.0"
+
     console.print("\n[bold green]Starting PASS Receiver...[/bold green]")
+    console.print(f"Device Name: [green]{identity.device_name}[/green]")
+    console.print(f"Local IP(s):  [bold green]{ip_str}[/bold green]")
     console.print(f"Download directory: [cyan]{config.download_dir}[/cyan]")
+    console.print(f"Transfer Port: [yellow]{config.transfer_port}[/yellow]")
     console.print("[dim]Listening for incoming connections and advertising presence... (Press Ctrl+C to stop)[/dim]\n")
 
     def on_request(sender_info: dict, manifest) -> bool:

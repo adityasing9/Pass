@@ -9,6 +9,10 @@ def create_broadcast_socket() -> socket.socket:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
+    except Exception:
+        pass
     return sock
 
 
@@ -32,7 +36,8 @@ def create_udp_listener_socket(port: int, multicast_group: str = None) -> socket
 
     if multicast_group:
         try:
-            mreq = struct.pack("4sl", socket.inet_aton(multicast_group), socket.INADDR_ANY)
+            # 8 bytes: 4 bytes group IP + 4 bytes interface IP
+            mreq = socket.inet_aton(multicast_group) + socket.inet_aton("0.0.0.0")
             sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
         except Exception:
             # Multicast might not be supported on all virtual adapters; broadcast remains active
