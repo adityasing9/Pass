@@ -20,10 +20,11 @@ def test_cli_parser_defaults():
     args = parser.parse_args(["update"])
     assert args.command == "update"
 
-    args = parser.parse_args(["send", "test.txt", "--to", "LINUX-PC"])
+    args = parser.parse_args(["send", "test.txt", "--to", "LINUX-PC", "--turbo"])
     assert args.command == "send"
     assert args.paths == ["test.txt"]
     assert args.to == "LINUX-PC"
+    assert args.turbo is True
 
     args = parser.parse_args(["receive", "--dir", "my_dl", "-y"])
     assert args.command == "receive"

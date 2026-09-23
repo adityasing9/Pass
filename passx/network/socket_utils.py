@@ -44,3 +44,20 @@ def create_udp_listener_socket(port: int, multicast_group: str = None) -> socket
             pass
 
     return sock
+
+
+def optimize_tcp_socket(sock: socket.socket) -> None:
+    """Optimize TCP socket for maximum LAN streaming speed"""
+    try:
+        # Disable Nagle's algorithm for low latency packet dispatch
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    except Exception:
+        pass
+
+    try:
+        # Expand send & receive buffers to 1 MB for high TCP window scaling
+        buf_size = 1024 * 1024
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, buf_size)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, buf_size)
+    except Exception:
+        pass

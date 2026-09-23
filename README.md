@@ -225,9 +225,17 @@ PASS automatically walks folders recursively and preserves the entire directory 
 #### 3. Send directly to a specific device (skip selection prompt):
 ```powershell
 passx send dataset.tar.gz --to LINUX-PC
+# Or direct to IP address without discovery:
+passx send dataset.tar.gz --to 192.168.1.105
 ```
 
-#### 4. Start in Receive Mode:
+#### 4. High-Speed Turbo Streaming (`--turbo`):
+For large transfers (movies, videos, ISOs, datasets), use `--turbo` to enable 2 MB streaming pipelines:
+```powershell
+passx send movie.mp4 --turbo
+```
+
+#### 5. Start in Receive Mode:
 ```powershell
 passx receive
 ```

@@ -21,7 +21,7 @@ def test_config_defaults(temp_config_dir):
     cfg = ConfigManager(temp_config_dir)
     assert cfg.discovery_port == 42424
     assert cfg.transfer_port == 42425
-    assert cfg.chunk_size == 256 * 1024
+    assert cfg.chunk_size == 1024 * 1024
     assert len(cfg.device_name) > 0
     assert cfg.download_dir.exists()
 

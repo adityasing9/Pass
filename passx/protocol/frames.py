@@ -18,7 +18,24 @@ class ProtocolError(Exception):
 
 
 def read_exact(sock, n: int) -> bytes:
-    """Read exactly n bytes from socket or raise EOFError / ConnectionError"""
+    """Read exactly n bytes from socket with zero-copy preallocated buffer"""
+    if n == 0:
+        return b""
+
+    if hasattr(sock, "recv_into"):
+        buf = bytearray(n)
+        view = memoryview(buf)
+        received = 0
+        while received < n:
+            read_bytes = sock.recv_into(view[received:], n - received)
+            if not read_bytes:
+                if received == 0:
+                    raise EOFError("Connection closed by peer")
+                raise ConnectionError(f"Connection closed prematurely, expected {n} bytes but got {received}")
+            received += read_bytes
+        return bytes(buf)
+
+    # Fallback for mock sockets without recv_into
     chunks = []
     received = 0
     while received < n:
@@ -38,7 +55,12 @@ def send_frame(sock, frame_type: int, payload: bytes) -> None:
     if length > MAX_FRAME_SIZE:
         raise ProtocolError(f"Frame payload ({length} bytes) exceeds maximum limit ({MAX_FRAME_SIZE} bytes)")
     header = struct.pack(HEADER_FORMAT, frame_type, length)
-    sock.sendall(header + payload)
+    if length < 65536:
+        sock.sendall(header + payload)
+    else:
+        # Avoid creating a huge concatenated copy in RAM
+        sock.sendall(header)
+        sock.sendall(payload)
 
 
 def recv_frame(sock) -> Tuple[int, bytes]:

@@ -31,7 +31,7 @@ class ConfigManager:
             "transfer_port": DEFAULT_TRANSFER_PORT,
             "multicast_group": DEFAULT_MULTICAST_GROUP,
             "auto_accept_trusted": True,
-            "chunk_size": 256 * 1024,  # 256 KB streaming chunks
+            "chunk_size": 1024 * 1024,  # 1 MB high-throughput streaming chunks
         }
 
     def _load(self) -> Dict[str, Any]:

@@ -55,7 +55,9 @@ def cmd_send(args, config: ConfigManager, identity: DeviceIdentity, trust_manage
         console.print(f"[red]Error preparing files for transfer: {e}[/red]")
         return 1
 
-    console.print(f"[bold green]Transfer Manifest:[/bold green] {manifest.file_count} file(s), {format_bytes(manifest.total_bytes)}")
+    if getattr(args, "turbo", False):
+        config.data["chunk_size"] = 2 * 1024 * 1024
+        console.print("[bold yellow]⚡ Turbo mode active (2 MB chunk pipeline)[/bold yellow]")
 
     target_peer = None
     with DiscoveryEngine(config, identity) as discovery:
@@ -338,6 +340,7 @@ def build_parser() -> argparse.ArgumentParser:
     send_p = subparsers.add_parser("send", help="Send file(s) or directory to a nearby PASS device")
     send_p.add_argument("paths", nargs="*", help="File or folder path(s) to transfer (omit to browse/select interactively)")
     send_p.add_argument("--to", help="Destination device name or ID (skips selection prompt)")
+    send_p.add_argument("--turbo", action="store_true", help="Enable high-speed turbo streaming (2 MB chunks)")
 
     # receive
     recv_p = subparsers.add_parser("receive", help="Start PASS in receive mode to accept incoming transfers")

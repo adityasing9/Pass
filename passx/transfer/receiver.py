@@ -10,6 +10,7 @@ from typing import Callable, Dict, Optional, Any
 from passx.core.config import ConfigManager
 from passx.core.identity import DeviceIdentity
 from passx.core.trust import TrustManager
+from passx.network.socket_utils import optimize_tcp_socket
 from passx.network.tls_context import create_server_ssl_context, verify_peer_fingerprint
 from passx.protocol.frames import (
     FRAME_TYPE_DATA,
@@ -126,6 +127,7 @@ class ReceiverServer:
     def _handle_client(self, raw_sock: socket.socket, addr: tuple, ssl_ctx) -> None:
         ssl_sock = None
         try:
+            optimize_tcp_socket(raw_sock)
             ssl_sock = ssl_ctx.wrap_socket(raw_sock, server_side=True)
             self._process_session(ssl_sock, addr)
         except Exception as e:
@@ -229,8 +231,10 @@ class ReceiverServer:
                 file_mode = "wb"
 
             file_received = resume_offset
+            last_checkpoint_time = 0.0
+            last_progress_time = 0.0
 
-            with open(partial_path, file_mode) as out_f:
+            with open(partial_path, file_mode, buffering=1024 * 1024) as out_f:
                 while file_received < file_size:
                     frame_type, chunk = recv_frame(sock)
                     if frame_type != FRAME_TYPE_DATA:
@@ -242,18 +246,22 @@ class ReceiverServer:
                     file_received += chunk_len
                     total_received_bytes += chunk_len
 
-                    # Checkpoint resume metadata periodically
-                    ResumeManager.save_checkpoint(
-                        target_dest,
-                        manifest.transfer_id,
-                        rel_path,
-                        file_size,
-                        file_received,
-                    )
+                    now = time.time()
+                    # Checkpoint resume metadata periodically (every 2s or at completion) to avoid disk thrashing
+                    if now - last_checkpoint_time >= 2.0 or file_received == file_size:
+                        last_checkpoint_time = now
+                        ResumeManager.save_checkpoint(
+                            target_dest,
+                            manifest.transfer_id,
+                            rel_path,
+                            file_size,
+                            file_received,
+                        )
 
-                    # Update progress
-                    if self.progress_callback:
-                        elapsed = time.time() - session_start_time
+                    # Update progress throttled to ~12 FPS
+                    if self.progress_callback and (now - last_progress_time >= 0.08 or total_received_bytes == total_transfer_bytes):
+                        last_progress_time = now
+                        elapsed = now - session_start_time
                         speed = total_received_bytes / elapsed if elapsed > 0 else 0
                         remaining_bytes = max(0, total_transfer_bytes - total_received_bytes)
                         eta = remaining_bytes / speed if speed > 0 else 0

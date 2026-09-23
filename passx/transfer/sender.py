@@ -9,6 +9,7 @@ from typing import Callable, Dict, Optional, Any
 from passx.core.config import ConfigManager
 from passx.core.identity import DeviceIdentity
 from passx.core.trust import TrustManager
+from passx.network.socket_utils import optimize_tcp_socket
 from passx.network.tls_context import create_client_ssl_context, verify_peer_fingerprint
 from passx.protocol.frames import (
     FRAME_TYPE_DATA,
@@ -67,6 +68,7 @@ class TransferSender:
         progress_callback signature: (current_file_path, transferred_bytes, total_bytes, speed_bps, eta_seconds)
         """
         raw_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        optimize_tcp_socket(raw_sock)
         raw_sock.settimeout(timeout)
         raw_sock.connect((peer_ip, peer_port))
 
@@ -121,6 +123,7 @@ class TransferSender:
             transferred_bytes = sum(resume_offsets.values())
             chunk_size = self.config.chunk_size
             start_time = time.time()
+            last_progress_time = 0.0
 
             for item in manifest.items:
                 resume_offset = resume_offsets.get(item.relative_path, 0)
@@ -131,7 +134,7 @@ class TransferSender:
 
                 hasher = hashlib.sha256()
 
-                with open(item.source_path, "rb") as f:
+                with open(item.source_path, "rb", buffering=1024 * 1024) as f:
                     # If resuming, hash already-transferred prefix
                     if resume_offset > 0:
                         hashed_so_far = 0
@@ -154,8 +157,10 @@ class TransferSender:
                         chunk_len = len(chunk)
                         transferred_bytes += chunk_len
 
-                        if progress_callback:
-                            elapsed = time.time() - start_time
+                        now = time.time()
+                        if progress_callback and (now - last_progress_time >= 0.08 or transferred_bytes == total_transfer_bytes):
+                            last_progress_time = now
+                            elapsed = now - start_time
                             speed = transferred_bytes / elapsed if elapsed > 0 else 0
                             remaining = max(0, total_transfer_bytes - transferred_bytes)
                             eta = remaining / speed if speed > 0 else 0
