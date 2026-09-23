@@ -116,17 +116,21 @@ passx status
 
 ---
 
-## 4. Quick Start
+## 4. How to Use PASS
 
-### Interactive Mode
+PASS can be used in two different ways depending on your preference:
+1. **Interactive Menu Mode** (`passx`) — Guided prompts, ideal for everyday use.
+2. **Direct CLI Commands** (`passx send ...`, `passx receive`) — Fast one-liners run straight from your normal terminal prompt.
 
-Simply run `passx` with no arguments to launch the interactive terminal interface:
+---
 
-```text
+### Mode 1: Interactive Menu Mode (`passx`)
+
+When you run `passx` with no arguments, it opens the interactive terminal menu:
+
+```powershell
 passx
 ```
-
-Output:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -141,45 +145,72 @@ Output:
 5. Device settings & status
 6. Exit
 
-Select an option [1-6]:
+Select an option [1/2/3/4/5/6] (1):
 ```
+
+#### Step-by-Step: How to Send a File in the Menu:
+
+1. **Select Option 1**: Type `1` and press **Enter** (or simply press **Enter**, as `1` is default).
+2. **Enter the Path**: PASS will ask for the path:
+   ```text
+   Enter file or directory path to send: C:\Users\AADI\Desktop\my_file.zip
+   ```
+   > 💡 **Tip:** On Windows, Linux, and macOS, you can simply **drag and drop** the file from File Explorer directly into the terminal window to paste its full path!
+3. **Select Target Device**: PASS automatically discovers nearby devices and shows a numbered list:
+   ```text
+   Discovered PASS Devices (2)
+   ┌───┬─────────────┬───────────────┬───────┬──────────┬──────────────────┐
+   │ # │ Device Name │ IP Address    │ Port  │ Platform │ Fingerprint      │
+   ├───┼─────────────┼───────────────┼───────┼──────────┼──────────────────┤
+   │ 1 │ LINUX-PC    │ 192.168.1.84  │ 42425 │ linux    │ 7b9a0c2e3f4d5e6a │
+   │ 2 │ IQOO-NEO-10 │ 192.168.1.105 │ 42425 │ android  │ f2e4b6c8a0d2e4f6 │
+   └───┴─────────────┴───────────────┴───────┴──────────┴──────────────────┘
+
+   Select device number to send to (1): 1
+   ```
+4. **Transfer Streams**: The progress bar shows live transfer speed (MB/s), ETA, and verifies SHA-256 upon completion!
+
+> 💡 **Smart Input Support:** You can also type commands directly into the menu prompt! For example, typing `send C:\path\file.txt` or `devices` or `receive` directly into `Select an option:` will immediately execute that action.
 
 ---
 
-### Sending Files
+### Mode 2: Direct CLI Commands (from PowerShell / Bash)
 
-#### Send a single file:
+> ⚠️ **Important:** Run these commands directly in your standard **PowerShell** or **Bash** terminal prompt (do **not** type `passx send ...` inside the interactive menu prompt).
 
-```bash
-passx send project.zip
+#### 1. Send a single file:
+```powershell
+passx send C:\Users\AADI\Desktop\project.zip
 ```
 
-PASS discovers nearby devices on your local network and prompts you to select the target:
-
-```text
-Discovered PASS Devices (2)
-┌───┬─────────────┬───────────────┬───────┬──────────┬──────────────────┐
-│ # │ Device Name │ IP Address    │ Port  │ Platform │ Fingerprint      │
-├───┼─────────────┼───────────────┼───────┼──────────┼──────────────────┤
-│ 1 │ LINUX-PC    │ 192.168.1.84  │ 42425 │ linux    │ 7b9a0c2e3f4d5e6a │
-│ 2 │ IQOO-NEO-10 │ 192.168.1.105 │ 42425 │ android  │ f2e4b6c8a0d2e4f6 │
-└───┴─────────────┴───────────────┴───────┴──────────┴──────────────────┘
-
-Select device number to send to: 1
+#### 2. Send multiple files or entire folders:
+```powershell
+passx send document.pdf photo.jpg C:\Users\AADI\Desktop\my_folder\
 ```
+PASS automatically walks folders recursively and preserves the entire directory tree on the receiving device!
 
-#### Send multiple files or entire directories:
-
-```bash
-passx send document.pdf photo.jpg project_folder/
-```
-
-PASS recursively bundles directory structures and preserves relative folder hierarchies on the receiving device.
-
-#### Send directly to a known device:
-
-```bash
+#### 3. Send directly to a specific device (skip selection prompt):
+```powershell
 passx send dataset.tar.gz --to LINUX-PC
+```
+
+#### 4. Start in Receive Mode:
+```powershell
+passx receive
+```
+To automatically accept all incoming transfers without confirmation prompts (useful for headless servers):
+```powershell
+passx receive --yes
+```
+
+#### 5. Discover nearby devices:
+```powershell
+passx devices
+```
+
+#### 6. Check system status & network interfaces:
+```powershell
+passx status
 ```
 
 ---
