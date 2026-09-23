@@ -322,22 +322,34 @@ PASS operates via two independent networking pipelines:
 - Works on wired Ethernet and Wi-Fi. Check `ufw` or `iptables` if local traffic is blocked.
 
 ### Android via Termux
-PASS runs natively inside Termux without requiring a separate Android APK:
-1. Install Termux from F-Droid.
-2. Grant storage access so PASS can write to Android's `Downloads` folder:
+PASS runs natively inside Termux on Android without requiring any graphical app:
+
+1. **Install Termux**: Download Termux from [F-Droid](https://f-droid.org/en/packages/com.termux/) or GitHub Releases (do not use the obsolete Google Play version).
+2. **Grant Storage Permission**:
    ```bash
    termux-setup-storage
    ```
-3. Install Python and dependencies:
+   *(Tap "Allow" on the popup. This links Android's shared storage to `~/storage`)*
+3. **Install Dependencies & PASS**:
    ```bash
-   pkg install python git
-   pip install git+https://github.com/adityasing9/SettleHub.git
+   pkg update && pkg install python curl -y
+   curl -sSL tinyurl.com/passx-linux | bash
    ```
-4. Run `passx`:
+4. **Sending a File from Phone to PC**:
+   ```bash
+   passx send ~/storage/shared/DCIM/Camera/photo.jpg
+   # or send any file from Android Downloads:
+   passx send ~/storage/downloads/document.pdf
+   ```
+5. **Receiving a File on Phone from PC**:
+   ```bash
+   passx receive --yes
+   ```
+   Transferred files land directly in **`~/storage/downloads/PASS/`** (visible immediately in your Android Files / Downloads app).
+6. **Interactive Menu Mode**:
    ```bash
    passx
    ```
-   Files are saved to `~/storage/downloads/PASS`.
 
 ### Virtual Machines (VMware & VirtualBox)
 - **Bridged Networking**: Recommended. The VM receives an IP on your physical LAN and discovers host/other machines seamlessly.
