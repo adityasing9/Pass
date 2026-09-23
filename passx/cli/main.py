@@ -237,14 +237,39 @@ def cmd_version() -> int:
 
 def cmd_update() -> int:
     """Upgrade PASS to the latest version directly from GitHub"""
+    import os
+    import shutil
     import subprocess
+    import tempfile
+
     console.print("[cyan]Updating PASS to the latest version from GitHub...[/cyan]")
     url = "https://github.com/adityasing9/Pass/archive/refs/heads/main.zip"
-    cmd = [sys.executable, "-m", "pip", "install", "--upgrade", url]
+    
+    tmp_path = None
+    install_src = url
     try:
-        res = subprocess.run(cmd)
+        if shutil.which("curl"):
+            tmp_fd, tmp_path = tempfile.mkstemp(suffix=".zip")
+            os.close(tmp_fd)
+            ret = subprocess.run(["curl", "-sSL", "-L", url, "-o", tmp_path])
+            if ret.returncode == 0 and os.path.getsize(tmp_path) > 0:
+                install_src = tmp_path
+    except Exception:
+        install_src = url
+
+    base_cmd = [
+        sys.executable, "-m", "pip", "install",
+        "--upgrade", "--no-deps", "--force-reinstall", "--no-cache-dir", install_src
+    ]
+    try:
+        res = subprocess.run(base_cmd)
         if res.returncode != 0:
-            res = subprocess.run(cmd + ["--break-system-packages"])
+            res = subprocess.run(base_cmd + ["--break-system-packages"])
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
         if res.returncode == 0:
             console.print("[bold green]✓ PASS successfully updated to the latest version![/bold green]")
             return 0

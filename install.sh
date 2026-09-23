@@ -51,9 +51,33 @@ if command -v pkg &>/dev/null; then
     pkg install python-cryptography -y &>/dev/null || true
 fi
 
-echo "Installing PASS directly from GitHub archive (no git clone required)..."
-$PY_CMD -m pip install --upgrade --quiet "https://github.com/adityasing9/Pass/archive/refs/heads/main.zip" || \
-$PY_CMD -m pip install --upgrade --break-system-packages --quiet "https://github.com/adityasing9/Pass/archive/refs/heads/main.zip"
+# Ensure rich is installed
+$PY_CMD -m pip install rich --quiet &>/dev/null || \
+$PY_CMD -m pip install rich --break-system-packages --quiet &>/dev/null || true
+
+TMP_DIR="${TMPDIR:-/data/data/com.termux/files/usr/tmp}"
+[ ! -d "$TMP_DIR" ] && TMP_DIR="/tmp"
+[ ! -d "$TMP_DIR" ] && TMP_DIR="$HOME"
+ZIP_FILE="$TMP_DIR/passx-install-$$.zip"
+
+echo "Downloading latest PASS from GitHub..."
+DOWNLOADED=false
+if command -v curl &>/dev/null; then
+    if curl -sSL -L "https://github.com/adityasing9/Pass/archive/refs/heads/main.zip" -o "$ZIP_FILE"; then
+        DOWNLOADED=true
+    fi
+fi
+
+if [ "$DOWNLOADED" = true ] && [ -s "$ZIP_FILE" ]; then
+    echo "Installing PASS..."
+    $PY_CMD -m pip install --upgrade --no-deps --force-reinstall "$ZIP_FILE" || \
+    $PY_CMD -m pip install --upgrade --no-deps --force-reinstall --break-system-packages "$ZIP_FILE"
+    rm -f "$ZIP_FILE"
+else
+    echo "Installing PASS directly via pip..."
+    $PY_CMD -m pip install --upgrade --no-cache-dir "https://github.com/adityasing9/Pass/archive/refs/heads/main.zip" || \
+    $PY_CMD -m pip install --upgrade --no-cache-dir --break-system-packages "https://github.com/adityasing9/Pass/archive/refs/heads/main.zip"
+fi
 
 echo ""
 echo "=========================================="

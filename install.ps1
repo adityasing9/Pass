@@ -12,7 +12,7 @@ if (-not $pythonCmd) {
 }
 
 Write-Host "Installing PASS directly from GitHub archive (no git clone required)..." -ForegroundColor Cyan
-& python -m pip install --upgrade --quiet "https://github.com/adityasing9/Pass/archive/refs/heads/main.zip"
+& python -m pip install --upgrade --no-cache-dir "https://github.com/adityasing9/Pass/archive/refs/heads/main.zip"
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "`nPASS installed successfully!" -ForegroundColor Green
