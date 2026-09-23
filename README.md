@@ -53,6 +53,8 @@ Open terminal and run:
 curl -sSL tinyurl.com/passx-linux | bash
 ```
 > *(Optional direct GitHub link: `curl -sSL https://raw.githubusercontent.com/adityasing9/Pass/main/install.sh | bash`)*
+> 
+> *Termux note: ensure dependencies are installed first: `pkg install python python-pip python-cryptography curl -y`*
 
 ---
 
@@ -332,7 +334,7 @@ PASS runs natively inside Termux on Android without requiring any graphical app:
    *(Tap "Allow" on the popup. This links Android's shared storage to `~/storage`)*
 3. **Install Dependencies & PASS**:
    ```bash
-   pkg update && pkg install python curl -y
+   pkg update && pkg install python python-pip python-cryptography curl -y
    curl -sSL tinyurl.com/passx-linux | bash
    ```
 4. **Sending a File from Phone to PC**:
