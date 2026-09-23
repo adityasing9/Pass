@@ -37,7 +37,7 @@ def setup_logging(debug: bool = False) -> None:
 
 def cmd_send(args, config: ConfigManager, identity: DeviceIdentity, trust_manager: TrustManager) -> int:
     """Handle 'passx send <path>...'"""
-    paths = [Path(os.path.expanduser(p.strip("\"'"))) for p in args.paths]
+    paths = [current_platform.resolve_smart_path(p) for p in args.paths]
     for p in paths:
         if not p.exists():
             console.print(f"[red]Error: Source path '{p}' does not exist.[/red]")

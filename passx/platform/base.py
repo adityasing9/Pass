@@ -30,3 +30,8 @@ class BasePlatform(ABC):
     def check_environment(self) -> dict:
         """Return dictionary of platform health/environment checks (e.g. storage permissions)"""
         pass
+
+    def resolve_smart_path(self, raw_path: str) -> Path:
+        """Resolve friendly shortcuts (e.g. cam:, dl:, dt:, latest) into valid Path"""
+        import os
+        return Path(os.path.expanduser(raw_path.strip().strip("\"'")))

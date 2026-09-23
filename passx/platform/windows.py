@@ -37,3 +37,34 @@ class WindowsPlatform(BasePlatform):
             "storage_ok": True,
             "firewall_advice": "Ensure UDP port 42424 and TCP port 42425 are permitted in Windows Defender Firewall.",
         }
+
+    def resolve_smart_path(self, raw_path: str) -> Path:
+        raw = raw_path.strip().strip("\"'")
+        lower = raw.lower()
+
+        desktop_dir = self.get_default_download_dir()
+        downloads_dir = Path.home() / "Downloads"
+        docs_dir = Path.home() / "Documents"
+
+        prefix_map = {
+            "dt:": desktop_dir,
+            "desktop:": desktop_dir,
+            "dl:": downloads_dir,
+            "downloads:": downloads_dir,
+            "doc:": docs_dir,
+            "docs:": docs_dir,
+        }
+        for prefix, target_dir in prefix_map.items():
+            if lower.startswith(prefix):
+                rel = raw[len(prefix):].lstrip("/\\")
+                return target_dir / rel
+
+        # If bare filename, check Desktop or Downloads if not in cwd
+        direct_path = Path(os.path.expanduser(raw))
+        if not direct_path.exists() and "/" not in raw and "\\" not in raw:
+            for candidate_dir in (desktop_dir, downloads_dir):
+                candidate = candidate_dir / raw
+                if candidate.exists():
+                    return candidate
+
+        return direct_path

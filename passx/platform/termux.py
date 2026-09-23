@@ -43,3 +43,54 @@ class TermuxPlatform(BasePlatform):
             "storage_ok": storage_mounted,
             "firewall_advice": advice,
         }
+
+    def resolve_smart_path(self, raw_path: str) -> Path:
+        raw = raw_path.strip().strip("\"'")
+        lower = raw.lower()
+
+        cam_dirs = [
+            Path.home() / "storage" / "dcim" / "Camera",
+            Path.home() / "storage" / "shared" / "DCIM" / "Camera",
+        ]
+        cam_dir = next((d for d in cam_dirs if d.exists()), cam_dirs[0])
+        dl_dir = Path.home() / "storage" / "downloads"
+        doc_dir = Path.home() / "storage" / "shared" / "Documents"
+
+        # Check 'latest' / 'latest:photo' / 'cam:latest'
+        if lower in ("latest", "latest:photo", "cam:latest", "camera:latest"):
+            if cam_dir.exists():
+                files = [f for f in cam_dir.iterdir() if f.is_file()]
+                if files:
+                    files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+                    return files[0]
+
+        if lower in ("dl:latest", "downloads:latest"):
+            if dl_dir.exists():
+                files = [f for f in dl_dir.iterdir() if f.is_file()]
+                if files:
+                    files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+                    return files[0]
+
+        # Prefixes: cam:, camera:, dl:, downloads:, doc:, docs:
+        prefix_map = {
+            "cam:": cam_dir,
+            "camera:": cam_dir,
+            "dl:": dl_dir,
+            "downloads:": dl_dir,
+            "doc:": doc_dir,
+            "docs:": doc_dir,
+        }
+        for prefix, target_dir in prefix_map.items():
+            if lower.startswith(prefix):
+                rel = raw[len(prefix):].lstrip("/\\")
+                return target_dir / rel
+
+        # If a plain filename was passed, search common Android folders automatically
+        direct_path = Path(os.path.expanduser(raw))
+        if not direct_path.exists() and "/" not in raw and "\\" not in raw:
+            for candidate_dir in (cam_dir, dl_dir, doc_dir):
+                candidate = candidate_dir / raw
+                if candidate.exists():
+                    return candidate
+
+        return direct_path

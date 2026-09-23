@@ -79,7 +79,7 @@ def _handle_send_interactive(
         raw_path = Prompt.ask("\nEnter file or directory path to send").strip()
     # Strip quotes if copied from terminal
     raw_path = raw_path.strip("\"'")
-    target_path = Path(os.path.expanduser(raw_path))
+    target_path = current_platform.resolve_smart_path(raw_path)
 
     if not target_path.exists():
         console.print(f"[red]Error: Path '{target_path}' does not exist.[/red]")
