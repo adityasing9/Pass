@@ -118,6 +118,28 @@ passx status
 
 ---
 
+### Updating PASS
+
+To update PASS to the latest version at any time, run:
+
+```bash
+passx update
+```
+
+Or re-run the one-line installer:
+- **Linux & Android (Termux)**:
+  ```bash
+  curl -sSL tinyurl.com/passx-linux | bash
+  ```
+- **Windows (PowerShell)**:
+  ```powershell
+  irm tinyurl.com/passx-win | iex
+  ```
+
+Inside the interactive menu (`passx`), you can also simply type `update` at the prompt.
+
+---
+
 ## 4. How to Use PASS
 
 PASS can be used in two different ways depending on your preference:
@@ -361,6 +383,11 @@ PASS runs natively inside Termux on Android without requiring any graphical app:
    ```bash
    passx
    ```
+7. **Updating PASS on Termux**:
+   ```bash
+   passx update
+   ```
+   *(Or simply run: `curl -sSL tinyurl.com/passx-linux | bash`)*
 
 ### Virtual Machines (VMware & VirtualBox)
 - **Bridged Networking**: Recommended. The VM receives an IP on your physical LAN and discovers host/other machines seamlessly.

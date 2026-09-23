@@ -58,6 +58,9 @@ def interactive_menu(
             _handle_trust_interactive(trust_manager)
         elif cmd in ("5", "settings", "status", "config"):
             _handle_settings_interactive(config, identity)
+        elif cmd in ("update", "upgrade"):
+            from .main import cmd_update
+            cmd_update()
         elif cmd in ("6", "exit", "quit", "q"):
             console.print("[green]Goodbye![/green]")
             break

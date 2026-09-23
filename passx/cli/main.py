@@ -235,6 +235,28 @@ def cmd_version() -> int:
     return 0
 
 
+def cmd_update() -> int:
+    """Upgrade PASS to the latest version directly from GitHub"""
+    import subprocess
+    console.print("[cyan]Updating PASS to the latest version from GitHub...[/cyan]")
+    url = "https://github.com/adityasing9/Pass/archive/refs/heads/main.zip"
+    cmd = [sys.executable, "-m", "pip", "install", "--upgrade", url]
+    try:
+        res = subprocess.run(cmd)
+        if res.returncode != 0:
+            res = subprocess.run(cmd + ["--break-system-packages"])
+        if res.returncode == 0:
+            console.print("[bold green]✓ PASS successfully updated to the latest version![/bold green]")
+            return 0
+        else:
+            console.print("[red]Update failed. You can run manually:[/red]")
+            console.print("curl -sSL tinyurl.com/passx-linux | bash")
+            return 1
+    except Exception as e:
+        console.print(f"[red]Error during update: {e}[/red]")
+        return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=__cli_name__,
@@ -271,6 +293,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     # version
     subparsers.add_parser("version", help="Show PASS version and protocol information")
+
+    # update
+    subparsers.add_parser("update", help="Update PASS to the latest version directly from GitHub")
 
     return parser
 
@@ -324,6 +349,8 @@ def main(argv=None) -> int:
         return cmd_status(args, config, identity, trust_manager)
     elif args.command == "version":
         return cmd_version()
+    elif args.command == "update":
+        return cmd_update()
     else:
         parser.print_help()
         return 1

@@ -17,6 +17,9 @@ def test_cli_parser_defaults():
     args = parser.parse_args(["devices"])
     assert args.command == "devices"
 
+    args = parser.parse_args(["update"])
+    assert args.command == "update"
+
     args = parser.parse_args(["send", "test.txt", "--to", "LINUX-PC"])
     assert args.command == "send"
     assert args.paths == ["test.txt"]
