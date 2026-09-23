@@ -1,0 +1,52 @@
+"""CLI command and argument parsing tests"""
+import os
+import tempfile
+from pathlib import Path
+import pytest
+from passx.cli.main import main, build_parser
+
+
+def test_cli_parser_defaults():
+    parser = build_parser()
+    args = parser.parse_args(["version"])
+    assert args.command == "version"
+
+    args = parser.parse_args(["status"])
+    assert args.command == "status"
+
+    args = parser.parse_args(["devices"])
+    assert args.command == "devices"
+
+    args = parser.parse_args(["send", "test.txt", "--to", "LINUX-PC"])
+    assert args.command == "send"
+    assert args.paths == ["test.txt"]
+    assert args.to == "LINUX-PC"
+
+    args = parser.parse_args(["receive", "--dir", "my_dl", "-y"])
+    assert args.command == "receive"
+    assert args.dir == "my_dl"
+    assert args.yes is True
+
+
+def test_cli_version_execution(capsys):
+    ret = main(["version"])
+    assert ret == 0
+    captured = capsys.readouterr()
+    assert "PASS (passx) version" in captured.out
+
+
+def test_cli_status_execution(capsys):
+    ret = main(["status"])
+    assert ret == 0
+    captured = capsys.readouterr()
+    assert "Device Information:" in captured.out
+    assert "Discovery Port:" in captured.out
+
+
+def test_cli_trust_untrust(capsys):
+    ret = main(["trust"])
+    assert ret == 0
+
+    # Untrust non-existent
+    ret = main(["untrust", "non-existent-device-xyz"])
+    assert ret == 1
