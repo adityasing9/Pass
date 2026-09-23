@@ -38,19 +38,21 @@ passx
 
 PASS can be installed and operated **without manually cloning the GitHub repository**. Choose whichever method best suits your environment:
 
-### Method A: One-Line Automatic Installers (Recommended)
+### Method A: Ultra-Short One-Line Installers (Recommended)
 
 #### Windows (PowerShell):
 Open PowerShell and run:
 ```powershell
-irm https://raw.githubusercontent.com/adityasing9/Pass/main/install.ps1 | iex
+irm tinyurl.com/passx-win | iex
 ```
 
 #### Linux & Android Termux (Bash):
 Open terminal and run:
 ```bash
-curl -sSL https://raw.githubusercontent.com/adityasing9/Pass/main/install.sh | bash
+curl -sSL tinyurl.com/passx-linux | bash
 ```
+
+*(Direct GitHub mirrors: [install.ps1](https://raw.githubusercontent.com/adityasing9/Pass/main/install.ps1) & [install.sh](https://raw.githubusercontent.com/adityasing9/Pass/main/install.sh))*
 
 ---
 
