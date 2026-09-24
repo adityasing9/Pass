@@ -320,10 +320,129 @@ def cmd_update() -> int:
         else:
             console.print("[red]Update failed. You can run manually:[/red]")
             console.print("curl -sSL tinyurl.com/passx-linux | bash")
-            return 1
     except Exception as e:
         console.print(f"[red]Error during update: {e}[/red]")
         return 1
+
+
+def cmd_pair(args, config: ConfigManager, identity: DeviceIdentity, trust_manager: TrustManager) -> int:
+    """Handle 'passx pair [target]'"""
+    import ipaddress
+    from passx.core.pairing import pair_with_peer
+    from passx.discovery.beacon import PeerInfo
+
+    target_peer = None
+
+    if getattr(args, "target", None):
+        target = args.target.strip()
+        is_ip = False
+        try:
+            ipaddress.ip_address(target)
+            is_ip = True
+        except ValueError:
+            pass
+
+        if is_ip:
+            target_peer = PeerInfo("direct", target, "unknown", target, config.transfer_port, "", [])
+        else:
+            with DiscoveryEngine(config, identity) as discovery:
+                discovery.scan(timeout=1.5)
+                target_peer = discovery.find_peer(target)
+    else:
+        console.print("[cyan]Scanning for nearby PASS devices to pair with...[/cyan]")
+        with DiscoveryEngine(config, identity) as discovery:
+            peers = discovery.scan(timeout=2.0)
+
+        if not peers:
+            console.print("[yellow]No PASS devices found automatically on the local network.[/yellow]")
+            console.print("[dim]Tip: Ensure the other device is on the same Wi-Fi/Hotspot and running 'passx', 'passx receive', or 'passx daemon'.[/dim]")
+            direct_ip = Prompt.ask("\nEnter device IP address manually to pair (or press Enter to cancel)", default="").strip()
+            if not direct_ip:
+                return 1
+            target_peer = PeerInfo("direct", direct_ip, "unknown", direct_ip, config.transfer_port, "", [])
+        else:
+            print_devices_table(peers)
+            choices = [str(i) for i in range(1, len(peers) + 1)]
+            selected_idx = Prompt.ask("Select device number to pair with", choices=choices, default="1")
+            target_peer = peers[int(selected_idx) - 1]
+
+    if not target_peer:
+        console.print(f"[red]Device '{args.target}' could not be located on the local network.[/red]")
+        return 1
+
+    console.print(f"[cyan]Establishing mutual pairing with [bold]{target_peer.device_name}[/bold] ({target_peer.ip}:{target_peer.port})...[/cyan]")
+    ok, msg = pair_with_peer(target_peer.ip, target_peer.port, config, identity, trust_manager)
+    if ok:
+        console.print(f"[bold green]✓ {msg}[/bold green]")
+        console.print("[dim]Devices are now paired! All future transfers will be accepted automatically without confirmation prompts.[/dim]")
+        return 0
+    else:
+        # Fallback to local trust if discovery beacon has fingerprint
+        if target_peer.fingerprint:
+            trust_manager.trust_device(target_peer.device_id, target_peer.device_name, target_peer.fingerprint)
+            console.print(f"[green]✓ Paired locally using verified beacon fingerprint for '{target_peer.device_name}'![/green]")
+            console.print("[dim]Transfers from this device will now be accepted automatically.[/dim]")
+            return 0
+        console.print(f"[red]Pairing failed: {msg}[/red]")
+        return 1
+
+
+def cmd_daemon(args, config: ConfigManager) -> int:
+    """Handle 'passx daemon [start|stop|status]'"""
+    from passx.core.daemon import start_daemon, stop_daemon, get_daemon_status
+
+    action = getattr(args, "action", "status") or "status"
+
+    if action == "start":
+        ok, msg, pid = start_daemon(config.config_dir)
+        if ok:
+            console.print(f"[bold green]✓ {msg}! (PID: {pid})[/bold green]")
+            console.print(f"Downloads Folder: [cyan]{config.download_dir}[/cyan]")
+            console.print("[dim]PASS is now running in the background 24/7. Transferred files will arrive automatically without opening PASS![/dim]")
+            return 0
+        else:
+            console.print(f"[yellow]{msg}[/yellow]")
+            return 0
+
+    elif action == "stop":
+        ok, msg = stop_daemon(config.config_dir)
+        if ok:
+            console.print(f"[green]✓ {msg}[/green]")
+            return 0
+        else:
+            console.print(f"[yellow]{msg}[/yellow]")
+            return 1
+
+    else:  # status
+        is_running, pid, log_path = get_daemon_status(config.config_dir)
+        if is_running:
+            console.print(f"[bold green]● PASS Background Receiver is ACTIVE[/bold green] (PID: [cyan]{pid}[/cyan])")
+            console.print(f"Log file: [dim]{log_path}[/dim]")
+            console.print(f"Downloads Folder: [cyan]{config.download_dir}[/cyan]")
+            console.print("[dim]Use 'passx daemon stop' to terminate the background receiver.[/dim]")
+        else:
+            console.print("[yellow]○ PASS Background Receiver is NOT running.[/yellow]")
+            console.print("[dim]Use 'passx daemon start' to keep PASS running in the background for automatic receiving.[/dim]")
+        return 0
+
+
+def cmd_auto_accept(args, config: ConfigManager) -> int:
+    """Handle 'passx auto-accept [on|off|status]'"""
+    state = getattr(args, "state", "status") or "status"
+    if state in ("on", "enable", "true", "1"):
+        config.set("auto_accept_all", True)
+        console.print("[bold green]✓ Auto-accept enabled![/bold green] All incoming transfers will be received automatically with zero confirmation prompts.")
+        return 0
+    elif state in ("off", "disable", "false", "0"):
+        config.set("auto_accept_all", False)
+        console.print("[yellow]Auto-accept disabled.[/yellow] Inbound transfers from non-paired devices will require confirmation.")
+        return 0
+    else:
+        current = config.get("auto_accept_all", False)
+        status_str = "[bold green]ON (All transfers auto-accepted)[/bold green]" if current else "[yellow]OFF (Pairing required for auto-accept)[/yellow]"
+        console.print(f"Auto-accept is currently: {status_str}")
+        console.print("[dim]Run 'passx auto-accept on' to accept transfers automatically without prompting.[/dim]")
+        return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -363,6 +482,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     # version
     subparsers.add_parser("version", help="Show PASS version and protocol information")
+
+    # pair
+    pair_p = subparsers.add_parser("pair", help="Pair with a nearby device for instant automatic transfers")
+    pair_p.add_argument("target", nargs="?", help="Device name or IP address to pair with (or omit to scan)")
+
+    # daemon
+    daemon_p = subparsers.add_parser("daemon", help="Manage 24/7 background receiver service")
+    daemon_p.add_argument("action", nargs="?", choices=["start", "stop", "status"], default="status", help="Action: start, stop, status (default: status)")
+
+    # auto-accept
+    auto_p = subparsers.add_parser("auto-accept", help="Toggle automatic acceptance of incoming transfers")
+    auto_p.add_argument("state", nargs="?", choices=["on", "off", "status"], default="status", help="State: on, off, status")
 
     # update
     subparsers.add_parser("update", help="Update PASS to the latest version directly from GitHub")
@@ -421,6 +552,12 @@ def main(argv=None) -> int:
         return cmd_version()
     elif args.command == "update":
         return cmd_update()
+    elif args.command == "pair":
+        return cmd_pair(args, config, identity, trust_manager)
+    elif args.command == "daemon":
+        return cmd_daemon(args, config)
+    elif args.command in ("auto-accept", "autoaccept"):
+        return cmd_auto_accept(args, config)
     else:
         parser.print_help()
         return 1

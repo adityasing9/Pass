@@ -12,6 +12,7 @@ from passx.core.identity import DeviceIdentity
 from passx.core.trust import TrustManager
 from passx.network.socket_utils import optimize_tcp_socket
 from passx.network.tls_context import create_server_ssl_context, verify_peer_fingerprint
+from passx.core.notifications import notify_user
 from passx.protocol.frames import (
     FRAME_TYPE_DATA,
     FRAME_TYPE_CONTROL,
@@ -23,11 +24,13 @@ from passx.protocol.frames import (
 )
 from passx.protocol.messages import (
     MSG_HANDSHAKE_INIT,
+    MSG_PAIR_REQUEST,
     MSG_TRANSFER_MANIFEST,
     MSG_FILE_START,
     MSG_FILE_END,
     MSG_TRANSFER_COMPLETE,
     make_handshake_resp,
+    make_pair_resp,
     make_transfer_decision,
     make_file_verified,
     make_error,
@@ -140,10 +143,31 @@ class ReceiverServer:
                     pass
 
     def _process_session(self, sock: socket.socket, addr: tuple) -> None:
-        # 1. Handshake Init
+        # 1. Handshake Init or Pair Request
         init_msg = recv_control_msg(sock)
-        if init_msg.get("action") != MSG_HANDSHAKE_INIT:
-            send_control_msg(sock, make_error("INVALID_HANDSHAKE", "Expected HANDSHAKE_INIT"))
+        action = init_msg.get("action")
+
+        if action == MSG_PAIR_REQUEST:
+            sender_id = init_msg.get("device_id", "")
+            sender_name = init_msg.get("device_name", "Unknown")
+            sender_fp = init_msg.get("fingerprint", "")
+
+            # Automatically establish mutual trust
+            self.trust_manager.trust_device(sender_id, sender_name, sender_fp)
+            pair_resp = make_pair_resp(
+                "OK",
+                self.identity.device_id,
+                self.identity.device_name,
+                self.identity.fingerprint,
+                f"Paired with {self.identity.device_name}",
+            )
+            send_control_msg(sock, pair_resp)
+            notify_user("PASS: Device Paired", f"Successfully paired with '{sender_name}'!")
+            logger.info(f"Mutual pairing established with {sender_name} ({sender_id})")
+            return
+
+        if action != MSG_HANDSHAKE_INIT:
+            send_control_msg(sock, make_error("INVALID_HANDSHAKE", "Expected HANDSHAKE_INIT or PAIR_REQUEST"))
             return
 
         sender_id = init_msg.get("sender_id", "")
@@ -164,9 +188,10 @@ class ReceiverServer:
 
         # 4. Acceptance Check
         is_trusted = self.trust_manager.is_trusted(sender_id, sender_fp)
+        auto_accept_all = self.config.get("auto_accept_all", False)
         accepted = False
 
-        if is_trusted and self.config.get("auto_accept_trusted", True):
+        if (is_trusted and self.config.get("auto_accept_trusted", True)) or auto_accept_all:
             accepted = True
         elif self.on_request_callback:
             sender_info = {
@@ -289,3 +314,4 @@ class ReceiverServer:
         # 7. TRANSFER_COMPLETE
         complete_msg = recv_control_msg(sock)
         logger.debug(f"Transfer {manifest.transfer_id} successfully completed from {sender_name}")
+        notify_user("PASS: Files Received!", f"Saved {manifest.file_count} file(s) from '{sender_name}' to {download_base.name}")

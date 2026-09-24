@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "passx"
-version = "0.3.0"
+version = "0.4.0"
 description = "Peer-to-peer Automated Secure Sharing (PASS) — Zero-configuration LAN file transfer CLI"
 readme = "README.md"
 requires-python = ">=3.8"

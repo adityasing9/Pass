@@ -33,8 +33,8 @@ def interactive_menu(
         console.print("[bold cyan]1.[/bold cyan] Send file(s) or folder")
         console.print("[bold cyan]2.[/bold cyan] Receive mode (Wait for transfers)")
         console.print("[bold cyan]3.[/bold cyan] Discover nearby PASS devices")
-        console.print("[bold cyan]4.[/bold cyan] Manage trusted devices")
-        console.print("[bold cyan]5.[/bold cyan] Device settings & status")
+        console.print("[bold cyan]4.[/bold cyan] Pair & manage trusted devices")
+        console.print("[bold cyan]5.[/bold cyan] Background service & settings")
         console.print("[bold cyan]6.[/bold cyan] Exit")
         console.print()
 
@@ -54,10 +54,10 @@ def interactive_menu(
             _handle_receive_interactive(config, identity, trust_manager)
         elif cmd in ("3", "devices", "scan", "list"):
             _handle_devices_interactive(config, identity)
-        elif cmd in ("4", "trust"):
-            _handle_trust_interactive(trust_manager)
-        elif cmd in ("5", "settings", "status", "config"):
-            _handle_settings_interactive(config, identity)
+        elif cmd in ("4", "pair", "trust"):
+            _handle_pair_interactive(config, identity, trust_manager)
+        elif cmd in ("5", "settings", "status", "daemon", "config"):
+            _handle_settings_interactive(config, identity, trust_manager)
         elif cmd in ("update", "upgrade"):
             from .main import cmd_update
             cmd_update()
@@ -206,28 +206,87 @@ def _handle_devices_interactive(config: ConfigManager, identity: DeviceIdentity)
     print_devices_table(peers)
 
 
-def _handle_trust_interactive(trust_manager: TrustManager):
-    trusted = trust_manager.list_trusted()
-    print_trusted_table(trusted)
-    if trusted:
-        if Confirm.ask("\nWould you like to remove a trusted device?", default=False):
-            name_or_id = Prompt.ask("Enter device name or ID to untrust")
+def _handle_pair_interactive(config: ConfigManager, identity: DeviceIdentity, trust_manager: TrustManager):
+    console.print("\n[bold cyan]Pair & Manage Trusted Devices[/bold cyan]")
+    console.print("[dim]Paired devices transfer files automatically without confirmation prompts.[/dim]\n")
+    console.print("1. 🔍 Scan & pair with nearby device (1-click)")
+    console.print("2. 🌐 Pair by IP address")
+    console.print("3. 📋 View paired devices")
+    console.print("4. ❌ Remove a paired device")
+
+    choice = Prompt.ask("\nSelect action", choices=["1", "2", "3", "4"], default="1")
+
+    if choice == "1":
+        from .main import cmd_pair
+        class DummyArgs:
+            target = None
+        cmd_pair(DummyArgs(), config, identity, trust_manager)
+
+    elif choice == "2":
+        ip = Prompt.ask("Enter device IP address to pair with").strip()
+        if ip:
+            from .main import cmd_pair
+            class DummyArgs:
+                target = ip
+            cmd_pair(DummyArgs(), config, identity, trust_manager)
+
+    elif choice == "3":
+        trusted = trust_manager.list_trusted()
+        print_trusted_table(trusted)
+
+    elif choice == "4":
+        trusted = trust_manager.list_trusted()
+        print_trusted_table(trusted)
+        if trusted:
+            name_or_id = Prompt.ask("\nEnter device name or ID to untrust")
             if trust_manager.untrust_device(name_or_id):
-                console.print(f"[green]Removed '{name_or_id}' from trusted devices.[/green]")
+                console.print(f"[green]✓ Removed '{name_or_id}' from trusted devices.[/green]")
             else:
                 console.print(f"[yellow]No matching trusted device found for '{name_or_id}'.[/yellow]")
 
 
-def _handle_settings_interactive(config: ConfigManager, identity: DeviceIdentity):
-    console.print("\n[bold]Current Settings & Device Identity:[/bold]")
-    console.print(f"Device Name: [cyan]{identity.device_name}[/cyan]")
-    console.print(f"Device ID: [dim]{identity.device_id}[/dim]")
-    console.print(f"Download Folder: [cyan]{config.download_dir}[/cyan]")
-    console.print(f"Discovery Port: [cyan]{config.discovery_port}[/cyan] (UDP)")
-    console.print(f"Transfer Port: [cyan]{config.transfer_port}[/cyan] (TCP)")
-    console.print(f"TLS Fingerprint: [dim]{identity.fingerprint}[/dim]")
+def _handle_settings_interactive(config: ConfigManager, identity: DeviceIdentity, trust_manager: TrustManager):
+    from passx.core.daemon import get_daemon_status, start_daemon, stop_daemon
 
-    if Confirm.ask("\nEdit settings?", default=False):
+    is_running, pid, log_path = get_daemon_status(config.config_dir)
+    daemon_status = f"[bold green]ACTIVE (PID {pid})[/bold green]" if is_running else "[yellow]OFF[/yellow]"
+    auto_acc = config.get("auto_accept_all", False)
+    auto_status = "[bold green]ON[/bold green]" if auto_acc else "[yellow]OFF[/yellow]"
+
+    console.print("\n[bold cyan]Background Service & Settings[/bold cyan]")
+    console.print(f"Background Receiver: {daemon_status}")
+    console.print(f"Auto-Accept Mode:    {auto_status}")
+    console.print(f"Device Name:         [cyan]{identity.device_name}[/cyan]")
+    console.print(f"Downloads Folder:    [cyan]{config.download_dir}[/cyan]")
+    console.print(f"Transfer Port:       [yellow]{config.transfer_port}[/yellow]")
+    console.print()
+
+    console.print("1. Toggle Background Receiver (Daemon)")
+    console.print("2. Toggle Auto-Accept Mode (Accept all incoming transfers automatically)")
+    console.print("3. Edit Device Name or Download Folder")
+    console.print("4. Return to main menu")
+
+    opt = Prompt.ask("\nSelect option", choices=["1", "2", "3", "4"], default="1")
+
+    if opt == "1":
+        if is_running:
+            stop_daemon(config.config_dir)
+            console.print("[green]✓ Background receiver stopped.[/green]")
+        else:
+            ok, msg, new_pid = start_daemon(config.config_dir)
+            if ok:
+                console.print(f"[bold green]✓ Background receiver started! (PID {new_pid})[/bold green]")
+                console.print("[dim]PASS is now running 24/7 in background. You do not need to open PASS to receive files![/dim]")
+            else:
+                console.print(f"[yellow]{msg}[/yellow]")
+
+    elif opt == "2":
+        new_val = not auto_acc
+        config.set("auto_accept_all", new_val)
+        status_txt = "ENABLED (All incoming transfers will be auto-accepted with zero confirmation prompts!)" if new_val else "DISABLED"
+        console.print(f"[bold green]Auto-accept is now {status_txt}[/bold green]")
+
+    elif opt == "3":
         new_name = Prompt.ask("New device name (leave blank to keep)", default="")
         if new_name.strip():
             config.device_name = new_name.strip()

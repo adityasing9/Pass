@@ -292,6 +292,54 @@ passx receive --yes
 
 ---
 
+### Easy 1-Click Device Pairing (`passx pair`)
+
+Pair your devices once, and all future transfers between them will be **automatically transferred without any confirmation prompts**:
+
+```bash
+passx pair
+```
+PASS scans your local network, displays nearby devices, and lets you pair in 1 click!
+
+You can also pair directly by IP:
+```bash
+passx pair 192.168.1.105
+```
+
+---
+
+### 24/7 Background Receiver Service (`passx daemon`)
+
+Never wait in the receiving terminal again! Run PASS as a background service so your device is **always ready to receive files automatically**:
+
+- **Start background receiver**:
+  ```bash
+  passx daemon start
+  ```
+  *(On Android Termux, this automatically maintains wake-lock so transfers arrive even when the phone screen is locked!)*
+- **Check service status**:
+  ```bash
+  passx daemon status
+  ```
+- **Stop background receiver**:
+  ```bash
+  passx daemon stop
+  ```
+
+---
+
+### Instant Auto-Accept Mode (`passx auto-accept`)
+
+If you are on a private home network or personal hotspot, you can enable auto-accept so **any device** on your LAN can send you files with zero prompts:
+
+```bash
+passx auto-accept on     # Turn on zero-prompt auto-accept
+passx auto-accept off    # Require pairing or confirmation
+passx auto-accept status # Check current mode
+```
+
+---
+
 ### Discovering Devices
 
 Scan the local network for live PASS peers:

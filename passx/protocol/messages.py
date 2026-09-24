@@ -12,7 +12,31 @@ MSG_FILE_START = "FILE_START"
 MSG_FILE_END = "FILE_END"
 MSG_FILE_VERIFIED = "FILE_VERIFIED"
 MSG_TRANSFER_COMPLETE = "TRANSFER_COMPLETE"
+MSG_PAIR_REQUEST = "PAIR_REQUEST"
+MSG_PAIR_RESP = "PAIR_RESP"
 MSG_ERROR = "ERROR"
+
+
+def make_pair_request(device_id: str, device_name: str, fingerprint: str) -> Dict[str, Any]:
+    return {
+        "action": MSG_PAIR_REQUEST,
+        "version": PROTOCOL_VERSION,
+        "device_id": device_id,
+        "device_name": device_name,
+        "fingerprint": fingerprint,
+    }
+
+
+def make_pair_resp(status: str, device_id: str, device_name: str, fingerprint: str, message: str = "") -> Dict[str, Any]:
+    return {
+        "action": MSG_PAIR_RESP,
+        "version": PROTOCOL_VERSION,
+        "status": status,
+        "device_id": device_id,
+        "device_name": device_name,
+        "fingerprint": fingerprint,
+        "message": message,
+    }
 
 
 def make_handshake_init(sender_id: str, sender_name: str, fingerprint: str) -> Dict[str, Any]:
