@@ -64,7 +64,7 @@ def print_devices_table(peers: List[PeerInfo]) -> None:
         fp_short = peer.fingerprint[:16] + "..." if len(peer.fingerprint) > 16 else peer.fingerprint
         table.add_row(
             str(i),
-            peer.device_name,
+            peer.display_name,
             peer.ip,
             str(peer.port),
             peer.platform,
@@ -88,9 +88,19 @@ def print_trusted_table(trusted_devices: List[Dict[str, Any]]) -> None:
 
     for d in trusted_devices:
         fp_short = d.get("fingerprint", "")[:16] + "..."
+        dev_name = d.get("device_name", "Unknown")
+        dev_id = d.get("device_id", "")
+        try:
+            from passx.core.aliases import AliasManager
+            from passx.core.config import ConfigManager
+            alias = AliasManager(ConfigManager()).get_alias(dev_id) or AliasManager(ConfigManager()).get_alias(dev_name)
+            if alias and alias.lower() != dev_name.lower():
+                dev_name = f"{alias} ({dev_name})"
+        except Exception:
+            pass
         table.add_row(
-            d.get("device_name", "Unknown"),
-            d.get("device_id", "")[:8] + "...",
+            dev_name,
+            dev_id[:8] + "...",
             fp_short,
             d.get("trusted_at", "")[:19],
         )

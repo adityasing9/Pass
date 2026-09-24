@@ -19,6 +19,13 @@ class PeerInfo:
     fingerprint: str
     capabilities: List[str] = field(default_factory=list)
     last_seen: float = field(default_factory=time.time)
+    nickname: Optional[str] = None
+
+    @property
+    def display_name(self) -> str:
+        if self.nickname and self.nickname.lower() != self.device_name.lower():
+            return f"{self.nickname} ({self.device_name})"
+        return self.nickname or self.device_name
 
     def is_expired(self, ttl_seconds: float = 8.0) -> bool:
         return (time.time() - self.last_seen) > ttl_seconds
@@ -27,6 +34,8 @@ class PeerInfo:
         return {
             "device_id": self.device_id,
             "device_name": self.device_name,
+            "nickname": self.nickname,
+            "display_name": self.display_name,
             "platform": self.platform,
             "ip": self.ip,
             "port": self.port,

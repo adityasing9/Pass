@@ -216,8 +216,9 @@ def _handle_pair_interactive(config: ConfigManager, identity: DeviceIdentity, tr
     console.print("2. 🌐 Pair by IP address")
     console.print("3. 📋 View paired devices")
     console.print("4. ❌ Remove a paired device")
+    console.print("5. 🏷️ Set or manage device nicknames")
 
-    choice = Prompt.ask("\nSelect action", choices=["1", "2", "3", "4"], default="1")
+    choice = Prompt.ask("\nSelect action", choices=["1", "2", "3", "4", "5"], default="1")
 
     if choice == "1":
         from .main import cmd_pair
@@ -246,6 +247,16 @@ def _handle_pair_interactive(config: ConfigManager, identity: DeviceIdentity, tr
                 console.print(f"[green]✓ Removed '{name_or_id}' from trusted devices.[/green]")
             else:
                 console.print(f"[yellow]No matching trusted device found for '{name_or_id}'.[/yellow]")
+
+    elif choice == "5":
+        from .main import cmd_rename
+        class DummyRenameArgs:
+            target = None
+            nickname = None
+            list = False
+            remove = False
+        setattr(DummyRenameArgs, "self", False)
+        cmd_rename(DummyRenameArgs(), config, identity, trust_manager)
 
 
 def _handle_settings_interactive(config: ConfigManager, identity: DeviceIdentity, trust_manager: TrustManager):

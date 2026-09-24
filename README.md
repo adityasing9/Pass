@@ -351,6 +351,38 @@ passx pair 192.168.1.105
 
 ---
 
+### Device Renaming & Nicknames (`passx rename` / `passx alias`)
+
+Customize how devices appear across PASS (in device discovery tables, chat contact lists, transfers, and notifications):
+
+#### 1. Rename your own device:
+```bash
+passx rename --self "My PC"
+# Or simply:
+passx rename "My PC"
+```
+
+#### 2. Assign a friendly nickname to another device:
+```bash
+passx rename IQOO-NEO-10 "My Phone"
+passx alias 192.168.1.105 "Work Laptop"
+passx nickname DESKTOP-XYZ "Dad's PC"
+```
+Once a nickname is set, PASS will recognize it everywhere:
+- `passx send document.pdf --to "My Phone"`
+- `passx chat "My Phone"`
+- `passx msg "My Phone" "Hello!"`
+- `passx clip "My Phone"`
+
+#### 3. View or remove nicknames:
+```bash
+passx rename --list              # View all configured nicknames
+passx rename --remove "My Phone" # Remove nickname
+```
+*(Running `passx rename` with no arguments opens the interactive nickname manager wizard!)*
+
+---
+
 ### 24/7 Background Receiver Service (`passx daemon`)
 
 Never wait in the receiving terminal again! Run PASS as a background service so your device is **always ready to receive files automatically**:

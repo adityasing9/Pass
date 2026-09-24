@@ -108,11 +108,14 @@ def pick_contact_interactively(
     contacts = []
     seen_ids = set()
 
+    from passx.core.aliases import AliasManager
+    alias_mgr = AliasManager(config)
+
     # 1. Add discovered online peers
     for p in discovered_peers:
         seen_ids.add(p.device_id)
         contacts.append({
-            "name": p.device_name,
+            "name": p.display_name,
             "id": p.device_id,
             "ip": p.ip,
             "port": p.port,
@@ -124,8 +127,9 @@ def pick_contact_interactively(
     for c in conversations:
         pid = c["peer_id"]
         if pid not in seen_ids and pid != "unknown":
+            display_name = alias_mgr.get_display_name(pid, c["peer_name"])
             contacts.append({
-                "name": c["peer_name"],
+                "name": display_name,
                 "id": pid,
                 "ip": "",
                 "port": config.transfer_port,

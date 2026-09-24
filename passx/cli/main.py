@@ -624,6 +624,175 @@ def cmd_clip(args, config: ConfigManager, identity: DeviceIdentity, trust_manage
         return 1
 
 
+def cmd_rename(args, config: ConfigManager, identity: DeviceIdentity, trust_manager: TrustManager) -> int:
+    """Handle 'passx rename [target] [nickname]' or 'passx alias'"""
+    from passx.core.aliases import AliasManager
+    alias_mgr = AliasManager(config)
+
+    # Flag: --list
+    if getattr(args, "list", False) or getattr(args, "target", "") in ("--list", "-l", "list"):
+        aliases = alias_mgr.list_aliases()
+        if not aliases:
+            console.print("[yellow]No device nicknames configured yet.[/yellow]")
+            console.print("[dim]Use 'passx rename <device> <nickname>' to nickname a device.[/dim]")
+            return 0
+        from rich.table import Table
+        table = Table(title=f"Device Nicknames ({len(aliases)})", border_style="cyan")
+        table.add_column("Nickname", style="bold green")
+        table.add_column("Original Target", style="cyan")
+        table.add_column("Device ID / Key", style="dim")
+        for a in aliases:
+            table.add_row(a.get("nickname", ""), a.get("target", ""), a.get("key", "")[:16] + "...")
+        console.print(table)
+        return 0
+
+    # Flag: --remove
+    if getattr(args, "remove", False) or getattr(args, "target", "") in ("--remove", "-r", "remove"):
+        target_to_remove = getattr(args, "nickname", None) or (args.target if args.target not in ("--remove", "-r", "remove") else None)
+        if not target_to_remove:
+            target_to_remove = Prompt.ask("Enter nickname or device to remove", default="").strip()
+        if not target_to_remove:
+            return 1
+        if alias_mgr.remove_alias(target_to_remove):
+            console.print(f"[green]✓ Nickname for '{target_to_remove}' removed.[/green]")
+            return 0
+        else:
+            console.print(f"[yellow]No nickname found for '{target_to_remove}'.[/yellow]")
+            return 1
+
+    # Flag: --self or single argument intended for this device
+    is_self = getattr(args, "self", False) or getattr(args, "target", "") in ("--self", "-s", "--me", "me", "self")
+    if is_self:
+        new_name = getattr(args, "nickname", None) or (args.target if args.target not in ("--self", "-s", "--me", "me", "self") else None)
+        if not new_name:
+            new_name = Prompt.ask(f"Enter new name for this device (Current: '{identity.device_name}')", default="").strip()
+        if not new_name:
+            return 0
+        config.device_name = new_name
+        console.print(f"[bold green]✓ This device has been renamed to: '{new_name}'![/bold green]")
+        return 0
+
+    target = getattr(args, "target", None)
+    nickname = getattr(args, "nickname", None)
+
+    # Two arguments: passx rename <target> <nickname>
+    if target and nickname:
+        dev_id = ""
+        dev_fp = ""
+        with DiscoveryEngine(config, identity) as discovery:
+            peer = discovery.find_peer(target)
+            if peer:
+                dev_id = peer.device_id
+                dev_fp = peer.fingerprint
+        if not dev_id:
+            for t in trust_manager.list_trusted():
+                if target.lower() in t.get("device_name", "").lower() or target == t.get("device_id"):
+                    dev_id = t.get("device_id")
+                    dev_fp = t.get("fingerprint")
+                    break
+
+        alias_mgr.set_alias(target, nickname, device_id=dev_id, fingerprint=dev_fp)
+        console.print(f"[bold green]✓ Nickname set:[/bold green] '{target}' will now appear as '[bold cyan]{nickname}[/bold cyan]' everywhere in PASS!")
+        return 0
+
+    # One argument: passx rename "NewName"
+    if target and not nickname:
+        console.print(f"\nTarget name: [bold cyan]{target}[/bold cyan]")
+        console.print("1. Rename THIS device to this name")
+        console.print("2. Set this as a nickname for a nearby/paired device")
+        console.print("0. Cancel")
+        c = Prompt.ask("Choose option", choices=["1", "2", "0"], default="1")
+        if c == "1":
+            config.device_name = target
+            console.print(f"[bold green]✓ This device has been renamed to: '{target}'![/bold green]")
+            return 0
+        elif c == "2":
+            nick = target
+            with DiscoveryEngine(config, identity) as discovery:
+                peers = discovery.scan(timeout=1.5)
+            if peers:
+                print_devices_table(peers)
+                p_idx = Prompt.ask("Select device number", choices=[str(i) for i in range(1, len(peers)+1)], default="1")
+                picked = peers[int(p_idx)-1]
+                alias_mgr.set_alias(picked.device_name, nick, device_id=picked.device_id, fingerprint=picked.fingerprint)
+                console.print(f"[bold green]✓ Nickname set:[/bold green] '{picked.device_name}' is now nicknamed '[bold cyan]{nick}[/bold cyan]'!")
+                return 0
+            else:
+                remote = Prompt.ask("Enter device name or IP to assign nickname to").strip()
+                if remote:
+                    alias_mgr.set_alias(remote, nick)
+                    console.print(f"[bold green]✓ Nickname set:[/bold green] '{remote}' is now nicknamed '[bold cyan]{nick}[/bold cyan]'!")
+                    return 0
+        return 0
+
+    # Interactive wizard (passx rename with no args)
+    console.print("\n[bold cyan]=== Device Nickname & Rename Manager ===[/bold cyan]")
+    console.print(f"1. 📱 Rename THIS device (Current: [bold yellow]{identity.device_name}[/bold yellow])")
+    console.print("2. 🏷️ Nickname a remote device / peer (e.g. 'IQOO-NEO-10' -> 'My Phone')")
+    console.print("3. 📋 View all configured nicknames")
+    console.print("4. ❌ Remove a nickname")
+    console.print("0. Cancel\n")
+
+    choice = Prompt.ask("Select an option", choices=["1", "2", "3", "4", "0"], default="1")
+    if choice == "1":
+        new_name = Prompt.ask(f"Enter new name for this device (Current: '{identity.device_name}')", default="").strip()
+        if new_name:
+            config.device_name = new_name
+            console.print(f"[bold green]✓ This device has been renamed to: '{new_name}'![/bold green]")
+    elif choice == "2":
+        console.print("[cyan]Scanning for nearby devices...[/cyan]")
+        with DiscoveryEngine(config, identity) as discovery:
+            peers = discovery.scan(timeout=1.5)
+        if peers:
+            print_devices_table(peers)
+            p_idx = Prompt.ask("Select device number (or enter device name/IP directly)", default="1").strip()
+            if p_idx.isdigit() and 1 <= int(p_idx) <= len(peers):
+                picked = peers[int(p_idx)-1]
+                nick = Prompt.ask(f"Enter nickname for '{picked.device_name}'").strip()
+                if nick:
+                    alias_mgr.set_alias(picked.device_name, nick, device_id=picked.device_id, fingerprint=picked.fingerprint)
+                    console.print(f"[bold green]✓ Nickname set:[/bold green] '{picked.device_name}' is now nicknamed '[bold cyan]{nick}[/bold cyan]'!")
+            elif p_idx:
+                nick = Prompt.ask(f"Enter nickname for '{p_idx}'").strip()
+                if nick:
+                    alias_mgr.set_alias(p_idx, nick)
+                    console.print(f"[bold green]✓ Nickname set:[/bold green] '{p_idx}' is now nicknamed '[bold cyan]{nick}[/bold cyan]'!")
+        else:
+            target_in = Prompt.ask("Enter device name, IP, or ID to nickname").strip()
+            if target_in:
+                nick = Prompt.ask(f"Enter nickname for '{target_in}'").strip()
+                if nick:
+                    alias_mgr.set_alias(target_in, nick)
+                    console.print(f"[bold green]✓ Nickname set:[/bold green] '{target_in}' is now nicknamed '[bold cyan]{nick}[/bold cyan]'!")
+    elif choice == "3":
+        aliases = alias_mgr.list_aliases()
+        if not aliases:
+            console.print("[yellow]No nicknames configured yet.[/yellow]")
+        else:
+            from rich.table import Table
+            table = Table(title="Device Nicknames", border_style="cyan")
+            table.add_column("Nickname", style="bold green")
+            table.add_column("Original Target", style="cyan")
+            table.add_column("Device ID / Key", style="dim")
+            for a in aliases:
+                table.add_row(a.get("nickname", ""), a.get("target", ""), a.get("key", "")[:16] + "...")
+            console.print(table)
+    elif choice == "4":
+        aliases = alias_mgr.list_aliases()
+        if not aliases:
+            console.print("[yellow]No nicknames configured to remove.[/yellow]")
+        else:
+            for idx, a in enumerate(aliases, 1):
+                console.print(f"[{idx}] {a.get('nickname')} -> {a.get('target')}")
+            del_c = Prompt.ask("Select nickname number to remove (or 0 to cancel)", default="0").strip()
+            if del_c.isdigit() and 1 <= int(del_c) <= len(aliases):
+                target_del = aliases[int(del_c)-1].get("key")
+                alias_mgr.remove_alias(target_del)
+                console.print("[green]✓ Nickname removed.[/green]")
+
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=__cli_name__,
@@ -686,6 +855,28 @@ def build_parser() -> argparse.ArgumentParser:
     # clip
     clip_p = subparsers.add_parser("clip", help="Send current clipboard contents directly to a device")
     clip_p.add_argument("target", help="Device name, ID, or IP to send clipboard to")
+
+    # rename / alias / nickname
+    rename_p = subparsers.add_parser("rename", help="Rename this device or assign a friendly nickname to another device")
+    rename_p.add_argument("target", nargs="?", help="Target device name/IP to nickname, or new name for this device")
+    rename_p.add_argument("nickname", nargs="?", help="Nickname to assign to target device")
+    rename_p.add_argument("--self", "--me", action="store_true", help="Rename this local device")
+    rename_p.add_argument("--list", "-l", action="store_true", help="List all configured device nicknames")
+    rename_p.add_argument("--remove", "-r", action="store_true", help="Remove a device nickname")
+
+    alias_p = subparsers.add_parser("alias", help="Assign or manage device nicknames")
+    alias_p.add_argument("target", nargs="?", help="Target device name/IP to nickname, or new name for this device")
+    alias_p.add_argument("nickname", nargs="?", help="Nickname to assign to target device")
+    alias_p.add_argument("--self", "--me", action="store_true", help="Rename this local device")
+    alias_p.add_argument("--list", "-l", action="store_true", help="List all configured device nicknames")
+    alias_p.add_argument("--remove", "-r", action="store_true", help="Remove a device nickname")
+
+    nick_p = subparsers.add_parser("nickname", help="Assign or manage device nicknames")
+    nick_p.add_argument("target", nargs="?", help="Target device name/IP to nickname, or new name for this device")
+    nick_p.add_argument("nickname", nargs="?", help="Nickname to assign to target device")
+    nick_p.add_argument("--self", "--me", action="store_true", help="Rename this local device")
+    nick_p.add_argument("--list", "-l", action="store_true", help="List all configured device nicknames")
+    nick_p.add_argument("--remove", "-r", action="store_true", help="Remove a device nickname")
 
     # update
     subparsers.add_parser("update", help="Update PASS to the latest version directly from GitHub")
@@ -756,6 +947,8 @@ def main(argv=None) -> int:
         return cmd_msg(args, config, identity, trust_manager)
     elif args.command == "clip":
         return cmd_clip(args, config, identity, trust_manager)
+    elif args.command in ("rename", "alias", "nickname"):
+        return cmd_rename(args, config, identity, trust_manager)
     else:
         parser.print_help()
         return 1

@@ -62,12 +62,31 @@ class DiscoveryEngine:
         self.running = False
 
     def get_peers(self) -> List[PeerInfo]:
-        """Return all active nearby peers"""
-        return self.listener.get_peers()
+        """Return all active nearby peers with nicknames attached"""
+        peers = self.listener.get_peers()
+        try:
+            from passx.core.aliases import AliasManager
+            alias_mgr = AliasManager(self.config)
+            for p in peers:
+                p.nickname = alias_mgr.get_alias(p.device_id) or alias_mgr.get_alias(p.device_name) or alias_mgr.get_alias(p.ip)
+        except Exception as e:
+            logger.debug(f"Error attaching aliases to peers: {e}")
+        return peers
 
     def find_peer(self, identifier: str) -> Optional[PeerInfo]:
-        """Find peer by device ID or name"""
-        return self.listener.find_peer(identifier)
+        """Find peer by device ID, friendly name, IP, or nickname"""
+        peers = self.get_peers()
+        ident_lower = identifier.lower().strip()
+        for peer in peers:
+            if peer.device_id.lower() == ident_lower or peer.device_id.lower().startswith(ident_lower):
+                return peer
+            if peer.device_name.lower() == ident_lower:
+                return peer
+            if peer.nickname and peer.nickname.lower() == ident_lower:
+                return peer
+            if peer.ip == ident_lower:
+                return peer
+        return None
 
     def scan(self, timeout: float = 2.0) -> List[PeerInfo]:
         """Send an active probe and wait for nearby peers to respond"""
