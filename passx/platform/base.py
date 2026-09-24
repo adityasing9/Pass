@@ -35,3 +35,11 @@ class BasePlatform(ABC):
         """Resolve friendly shortcuts (e.g. cam:, dl:, dt:, latest) into valid Path"""
         import os
         return Path(os.path.expanduser(raw_path.strip().strip("\"'")))
+
+    def get_clipboard_text(self) -> str:
+        """Read text from system clipboard, returns empty string if unavailable"""
+        return ""
+
+    def set_clipboard_text(self, text: str) -> bool:
+        """Write text to system clipboard, returns True if successful"""
+        return False

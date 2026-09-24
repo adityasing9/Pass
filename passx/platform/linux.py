@@ -37,3 +37,26 @@ class LinuxPlatform(BasePlatform):
             "storage_ok": True,
             "firewall_advice": "Check ufw or iptables if discovery or transfers are blocked on ports 42424/42425.",
         }
+
+    def get_clipboard_text(self) -> str:
+        import subprocess
+        for cmd in [["wl-paste"], ["xclip", "-selection", "clipboard", "-o"], ["xsel", "--clipboard", "--output"]]:
+            try:
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
+                if res.returncode == 0:
+                    return res.stdout
+            except Exception:
+                continue
+        return ""
+
+    def set_clipboard_text(self, text: str) -> bool:
+        import subprocess
+        for cmd in [["wl-copy"], ["xclip", "-selection", "clipboard"], ["xsel", "--clipboard", "--input"]]:
+            try:
+                p = subprocess.Popen(cmd, stdin=subprocess.PIPE, text=True)
+                p.communicate(input=text, timeout=3)
+                if p.returncode == 0:
+                    return True
+            except Exception:
+                continue
+        return False

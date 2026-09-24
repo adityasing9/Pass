@@ -177,6 +177,25 @@ class TransferSender:
 
             # 6. Complete transfer
             send_control_msg(ssl_sock, make_transfer_complete(manifest.transfer_id))
+
+            try:
+                from passx.core.chat_store import ChatStore
+                from passx.cli.formatters import format_bytes
+                chat_store = ChatStore(self.config)
+                names = ", ".join(item.relative_path for item in manifest.items[:2])
+                if len(manifest.items) > 2:
+                    names += f" (+{len(manifest.items) - 2} more)"
+                chat_store.save_message(
+                    peer_id=receiver_id or peer_host,
+                    peer_name=receiver_name or peer_host,
+                    sender="me",
+                    text=f"📁 Sent: {names} ({format_bytes(manifest.total_bytes)})",
+                    msg_type="file",
+                    file_info={"file_count": manifest.file_count, "total_bytes": manifest.total_bytes},
+                )
+            except Exception as e:
+                logger.debug(f"Error logging file transfer in chat store: {e}")
+
             return True
 
         finally:

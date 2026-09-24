@@ -34,8 +34,9 @@ def interactive_menu(
         console.print("[bold cyan]2.[/bold cyan] Receive mode (Wait for transfers)")
         console.print("[bold cyan]3.[/bold cyan] Discover nearby PASS devices")
         console.print("[bold cyan]4.[/bold cyan] Pair & manage trusted devices")
-        console.print("[bold cyan]5.[/bold cyan] Background service & settings")
-        console.print("[bold cyan]6.[/bold cyan] Exit")
+        console.print("[bold cyan]5.[/bold cyan] 💬 Terminal Chat (WhatsApp Mode)")
+        console.print("[bold cyan]6.[/bold cyan] Background service & settings")
+        console.print("[bold cyan]7.[/bold cyan] Exit")
         console.print()
 
         raw_choice = Prompt.ask("Select an option", default="1").strip()
@@ -56,16 +57,18 @@ def interactive_menu(
             _handle_devices_interactive(config, identity)
         elif cmd in ("4", "pair", "trust"):
             _handle_pair_interactive(config, identity, trust_manager)
-        elif cmd in ("5", "settings", "status", "daemon", "config"):
+        elif cmd in ("5", "c", "chat", "msg", "whatsapp"):
+            _handle_chat_interactive(config, identity, trust_manager)
+        elif cmd in ("6", "settings", "status", "daemon", "config"):
             _handle_settings_interactive(config, identity, trust_manager)
         elif cmd in ("update", "upgrade"):
             from .main import cmd_update
             cmd_update()
-        elif cmd in ("6", "exit", "quit", "q"):
+        elif cmd in ("7", "exit", "quit", "q"):
             console.print("[green]Goodbye![/green]")
             break
         else:
-            console.print(f"[yellow]Unknown option '{raw_choice}'. Please enter 1-6 or a command like 'send', 'receive', 'devices', 'exit'.[/yellow]")
+            console.print(f"[yellow]Unknown option '{raw_choice}'. Please enter 1-7 or 'chat', 'send', 'exit'.[/yellow]")
 
         Prompt.ask("\n[dim]Press Enter to return to menu...[/dim]", default="")
 
@@ -297,3 +300,14 @@ def _handle_settings_interactive(config: ConfigManager, identity: DeviceIdentity
             p = Path(os.path.expanduser(new_dl.strip()))
             config.download_dir = p
             console.print("[green]Download directory updated![/green]")
+
+
+def _handle_chat_interactive(
+    config: ConfigManager,
+    identity: DeviceIdentity,
+    trust_manager: TrustManager,
+) -> None:
+    from passx.cli.chat_ui import pick_contact_interactively, run_chat_session
+    peer = pick_contact_interactively(config, identity, trust_manager)
+    if peer:
+        run_chat_session(peer, config, identity, trust_manager)

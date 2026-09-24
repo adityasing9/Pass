@@ -94,3 +94,26 @@ class TermuxPlatform(BasePlatform):
                     return candidate
 
         return direct_path
+
+    def get_clipboard_text(self) -> str:
+        import subprocess
+        try:
+            res = subprocess.run(["termux-clipboard-get"], capture_output=True, text=True, timeout=3)
+            if res.returncode == 0:
+                return res.stdout
+        except Exception:
+            pass
+        return ""
+
+    def set_clipboard_text(self, text: str) -> bool:
+        import subprocess
+        try:
+            p = subprocess.Popen(["termux-clipboard-set"], stdin=subprocess.PIPE, text=True)
+            p.communicate(input=text, timeout=3)
+            return p.returncode == 0
+        except Exception:
+            try:
+                res = subprocess.run(["termux-clipboard-set", text], timeout=3)
+                return res.returncode == 0
+            except Exception:
+                return False

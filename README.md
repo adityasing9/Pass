@@ -292,6 +292,49 @@ passx receive --yes
 
 ---
 
+### WhatsApp of the Terminal (💬 Live P2P Chat & Messaging)
+
+PASS turns your terminal into a secure, offline, peer-to-peer messenger:
+
+#### 1. Interactive WhatsApp Mode (`passx chat`):
+Launch an interactive real-time chat with formatted chat bubbles, contact status, and inline file transfers:
+```bash
+passx chat
+```
+Or start chatting with a specific device directly:
+```bash
+passx chat Pixel-7
+# Or by IP:
+passx chat 192.168.1.105
+```
+
+**Inside the chat room:**
+- **Send messages:** Type any text and press `[Enter]`.
+- **Attach files/folders:** Type `/send <path>` (e.g. `/send photo.jpg` or `/send ~/Documents`) to transfer files directly inside the conversation!
+- **Share clipboard:** Type `/clip` to send copied text across devices instantly.
+- **Older messages:** Type `/history` to view past chat history.
+- **Clear screen:** Type `/clear`.
+- **Exit:** Type `/exit` or `/quit`.
+
+#### 2. Quick Instant Messages (`passx msg`):
+Send a message without opening the full chat interface:
+```bash
+passx msg Pixel-7 "Hey, dinner is ready!"
+passx msg 192.168.1.105 "Check out the repo updates"
+```
+
+#### 3. Cross-Device Clipboard Sharing (`passx clip`):
+Copy code, URLs, or text on your PC and send it straight to your phone's clipboard:
+```bash
+passx clip Pixel-7
+```
+
+- **100% Offline & Private:** Messages travel directly over local Wi-Fi / Hotspot via mutual TLS encryption. Zero cloud servers.
+- **Background Push Notifications:** Incoming messages trigger native Android notifications and Windows desktop toasts.
+- **Persistent History:** Conversations are preserved locally in `~/.pass/chats/`.
+
+---
+
 ### Easy 1-Click Device Pairing (`passx pair`)
 
 Pair your devices once, and all future transfers between them will be **automatically transferred without any confirmation prompts**:

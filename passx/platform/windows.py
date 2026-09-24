@@ -68,3 +68,31 @@ class WindowsPlatform(BasePlatform):
                     return candidate
 
         return direct_path
+
+    def get_clipboard_text(self) -> str:
+        import subprocess
+        try:
+            res = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", "Get-Clipboard"],
+                capture_output=True,
+                text=True,
+                timeout=3,
+            )
+            if res.returncode == 0:
+                return res.stdout.rstrip("\r\n")
+        except Exception:
+            pass
+        return ""
+
+    def set_clipboard_text(self, text: str) -> bool:
+        import subprocess
+        try:
+            p = subprocess.Popen(
+                ["powershell", "-NoProfile", "-Command", "$input | Set-Clipboard"],
+                stdin=subprocess.PIPE,
+                text=True,
+            )
+            p.communicate(input=text, timeout=3)
+            return p.returncode == 0
+        except Exception:
+            return False

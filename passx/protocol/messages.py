@@ -1,4 +1,5 @@
 """Protocol message constructors and type definitions"""
+import time
 from typing import Dict, List, Any, Optional
 
 PROTOCOL_VERSION = 1
@@ -14,7 +15,49 @@ MSG_FILE_VERIFIED = "FILE_VERIFIED"
 MSG_TRANSFER_COMPLETE = "TRANSFER_COMPLETE"
 MSG_PAIR_REQUEST = "PAIR_REQUEST"
 MSG_PAIR_RESP = "PAIR_RESP"
+MSG_CHAT = "CHAT_MSG"
+MSG_CHAT_ACK = "CHAT_ACK"
 MSG_ERROR = "ERROR"
+
+
+def make_chat_msg(
+    sender_id: str,
+    sender_name: str,
+    fingerprint: str,
+    text: str,
+    msg_id: str = "",
+    msg_type: str = "text",
+    file_info: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    return {
+        "action": MSG_CHAT,
+        "version": PROTOCOL_VERSION,
+        "msg_id": msg_id,
+        "sender_id": sender_id,
+        "sender_name": sender_name,
+        "fingerprint": fingerprint,
+        "text": text,
+        "msg_type": msg_type,
+        "file_info": file_info,
+        "timestamp": time.time(),
+    }
+
+
+def make_chat_ack(
+    msg_id: str,
+    status: str = "DELIVERED",
+    device_id: str = "",
+    device_name: str = "",
+) -> Dict[str, Any]:
+    return {
+        "action": MSG_CHAT_ACK,
+        "version": PROTOCOL_VERSION,
+        "msg_id": msg_id,
+        "status": status,
+        "device_id": device_id,
+        "device_name": device_name,
+        "timestamp": time.time(),
+    }
 
 
 def make_pair_request(device_id: str, device_name: str, fingerprint: str) -> Dict[str, Any]:

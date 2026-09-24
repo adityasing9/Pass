@@ -43,6 +43,19 @@ def test_cli_parser_defaults():
     assert args.command == "auto-accept"
     assert args.state == "on"
 
+    args = parser.parse_args(["chat", "Pixel-7"])
+    assert args.command == "chat"
+    assert args.target == "Pixel-7"
+
+    args = parser.parse_args(["msg", "Pixel-7", "Hello", "world!"])
+    assert args.command == "msg"
+    assert args.target == "Pixel-7"
+    assert args.message == ["Hello", "world!"]
+
+    args = parser.parse_args(["clip", "Pixel-7"])
+    assert args.command == "clip"
+    assert args.target == "Pixel-7"
+
 
 def test_cli_version_execution(capsys):
     ret = main(["version"])

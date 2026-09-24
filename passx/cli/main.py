@@ -445,6 +445,185 @@ def cmd_auto_accept(args, config: ConfigManager) -> int:
         return 0
 
 
+def cmd_chat(args, config: ConfigManager, identity: DeviceIdentity, trust_manager: TrustManager) -> int:
+    """Handle 'passx chat [target]'"""
+    from passx.cli.chat_ui import run_chat_session, pick_contact_interactively
+    from passx.discovery.beacon import PeerInfo
+
+    target_peer = None
+    if getattr(args, "target", None):
+        target_str = args.target.strip()
+        is_ip = False
+        try:
+            import ipaddress
+            ipaddress.ip_address(target_str)
+            is_ip = True
+        except ValueError:
+            pass
+
+        if is_ip:
+            target_peer = PeerInfo(
+                device_id="direct-ip",
+                device_name=target_str,
+                platform="unknown",
+                ip=target_str,
+                port=config.transfer_port,
+                fingerprint="",
+                capabilities=[],
+            )
+        else:
+            with DiscoveryEngine(config, identity) as discovery:
+                discovery.scan(timeout=1.5)
+                target_peer = discovery.find_peer(target_str)
+
+            if not target_peer:
+                for dev in trust_manager.list_trusted():
+                    if target_str.lower() in dev.get("name", "").lower() or target_str == dev.get("device_id"):
+                        ip = Prompt.ask(f"Enter IP address for '{dev['name']}'", default="").strip()
+                        if ip:
+                            target_peer = PeerInfo(
+                                device_id=dev["device_id"],
+                                device_name=dev["name"],
+                                platform="unknown",
+                                ip=ip,
+                                port=config.transfer_port,
+                                fingerprint=dev.get("fingerprint", ""),
+                                capabilities=[],
+                            )
+                        break
+
+        if not target_peer:
+            console.print(f"[red]Device '{target_str}' not found on the local network.[/red]")
+            return 1
+    else:
+        target_peer = pick_contact_interactively(config, identity, trust_manager)
+        if not target_peer:
+            return 0
+
+    run_chat_session(target_peer, config, identity, trust_manager)
+    return 0
+
+
+def cmd_msg(args, config: ConfigManager, identity: DeviceIdentity, trust_manager: TrustManager) -> int:
+    """Handle 'passx msg <target> <message...>'"""
+    from passx.core.chat_client import send_chat
+    from passx.discovery.beacon import PeerInfo
+
+    target_str = args.target.strip()
+    text = " ".join(args.message).strip()
+    if not text:
+        console.print("[red]Error: Message cannot be empty.[/red]")
+        return 1
+
+    target_peer = None
+    is_ip = False
+    try:
+        import ipaddress
+        ipaddress.ip_address(target_str)
+        is_ip = True
+    except ValueError:
+        pass
+
+    if is_ip:
+        target_peer = PeerInfo(
+            device_id="direct-ip",
+            device_name=target_str,
+            platform="unknown",
+            ip=target_str,
+            port=config.transfer_port,
+            fingerprint="",
+            capabilities=[],
+        )
+    else:
+        with DiscoveryEngine(config, identity) as discovery:
+            discovery.scan(timeout=1.5)
+            target_peer = discovery.find_peer(target_str)
+
+    if not target_peer:
+        console.print(f"[red]Device '{target_str}' not found on the local network.[/red]")
+        console.print("[dim]Tip: Check if the receiving device is online or specify its IP address directly.[/dim]")
+        return 1
+
+    console.print(f"[cyan]Sending message to {target_peer.device_name}...[/cyan]")
+    ok, status_msg, saved = send_chat(
+        peer_ip=target_peer.ip,
+        peer_port=target_peer.port,
+        text=text,
+        config=config,
+        identity=identity,
+        trust_manager=trust_manager,
+        peer_id=target_peer.device_id,
+        peer_name=target_peer.device_name,
+    )
+
+    if ok:
+        console.print(f"[bold green]✓✓ Delivered to {target_peer.device_name}:[/bold green] [white]\"{text}\"[/white]")
+        return 0
+    else:
+        console.print(f"[bold red]✗ Delivery failed:[/bold red] {status_msg}")
+        return 1
+
+
+def cmd_clip(args, config: ConfigManager, identity: DeviceIdentity, trust_manager: TrustManager) -> int:
+    """Handle 'passx clip <target>'"""
+    from passx.core.chat_client import send_chat
+    from passx.discovery.beacon import PeerInfo
+
+    target_str = args.target.strip()
+    clip_text = current_platform.get_clipboard_text()
+    if not clip_text:
+        console.print("[yellow]Clipboard is empty or could not be read.[/yellow]")
+        return 1
+
+    target_peer = None
+    is_ip = False
+    try:
+        import ipaddress
+        ipaddress.ip_address(target_str)
+        is_ip = True
+    except ValueError:
+        pass
+
+    if is_ip:
+        target_peer = PeerInfo(
+            device_id="direct-ip",
+            device_name=target_str,
+            platform="unknown",
+            ip=target_str,
+            port=config.transfer_port,
+            fingerprint="",
+            capabilities=[],
+        )
+    else:
+        with DiscoveryEngine(config, identity) as discovery:
+            discovery.scan(timeout=1.5)
+            target_peer = discovery.find_peer(target_str)
+
+    if not target_peer:
+        console.print(f"[red]Device '{target_str}' not found on the local network.[/red]")
+        return 1
+
+    preview = clip_text[:60] + "..." if len(clip_text) > 60 else clip_text
+    console.print(f"[cyan]Sending clipboard to {target_peer.device_name} ({len(clip_text)} chars): '{preview}'...[/cyan]")
+    ok, status_msg, saved = send_chat(
+        peer_ip=target_peer.ip,
+        peer_port=target_peer.port,
+        text=f"📋 [Clipboard]: {clip_text}",
+        config=config,
+        identity=identity,
+        trust_manager=trust_manager,
+        peer_id=target_peer.device_id,
+        peer_name=target_peer.device_name,
+    )
+
+    if ok:
+        console.print(f"[bold green]✓✓ Clipboard sent to {target_peer.device_name}![/bold green]")
+        return 0
+    else:
+        console.print(f"[bold red]✗ Delivery failed:[/bold red] {status_msg}")
+        return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=__cli_name__,
@@ -494,6 +673,19 @@ def build_parser() -> argparse.ArgumentParser:
     # auto-accept
     auto_p = subparsers.add_parser("auto-accept", help="Toggle automatic acceptance of incoming transfers")
     auto_p.add_argument("state", nargs="?", choices=["on", "off", "status"], default="status", help="State: on, off, status")
+
+    # chat
+    chat_p = subparsers.add_parser("chat", help="Start real-time terminal chat (WhatsApp mode)")
+    chat_p.add_argument("target", nargs="?", help="Device name, ID, or IP to chat with (or omit to pick contact)")
+
+    # msg
+    msg_p = subparsers.add_parser("msg", help="Send a quick instant message to a device")
+    msg_p.add_argument("target", help="Device name, ID, or IP to send to")
+    msg_p.add_argument("message", nargs="+", help="Message text to send")
+
+    # clip
+    clip_p = subparsers.add_parser("clip", help="Send current clipboard contents directly to a device")
+    clip_p.add_argument("target", help="Device name, ID, or IP to send clipboard to")
 
     # update
     subparsers.add_parser("update", help="Update PASS to the latest version directly from GitHub")
@@ -558,6 +750,12 @@ def main(argv=None) -> int:
         return cmd_daemon(args, config)
     elif args.command in ("auto-accept", "autoaccept"):
         return cmd_auto_accept(args, config)
+    elif args.command == "chat":
+        return cmd_chat(args, config, identity, trust_manager)
+    elif args.command == "msg":
+        return cmd_msg(args, config, identity, trust_manager)
+    elif args.command == "clip":
+        return cmd_clip(args, config, identity, trust_manager)
     else:
         parser.print_help()
         return 1

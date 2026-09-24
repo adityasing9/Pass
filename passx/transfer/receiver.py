@@ -25,12 +25,15 @@ from passx.protocol.frames import (
 from passx.protocol.messages import (
     MSG_HANDSHAKE_INIT,
     MSG_PAIR_REQUEST,
+    MSG_PAIR_RESP,
+    MSG_CHAT,
     MSG_TRANSFER_MANIFEST,
     MSG_FILE_START,
     MSG_FILE_END,
     MSG_TRANSFER_COMPLETE,
     make_handshake_resp,
     make_pair_resp,
+    make_chat_ack,
     make_transfer_decision,
     make_file_verified,
     make_error,
@@ -166,8 +169,42 @@ class ReceiverServer:
             logger.info(f"Mutual pairing established with {sender_name} ({sender_id})")
             return
 
+        if action == MSG_CHAT:
+            sender_id = init_msg.get("sender_id", "")
+            sender_name = init_msg.get("sender_name", "Unknown")
+            sender_fp = init_msg.get("fingerprint", "")
+            text = init_msg.get("text", "")
+            msg_id = init_msg.get("msg_id", "")
+            timestamp = init_msg.get("timestamp", time.time())
+            msg_type = init_msg.get("msg_type", "text")
+            file_info = init_msg.get("file_info")
+
+            from passx.core.chat_store import ChatStore
+            chat_store = ChatStore(self.config)
+            chat_store.save_message(
+                peer_id=sender_id,
+                peer_name=sender_name,
+                sender="peer",
+                text=text,
+                msg_type=msg_type,
+                file_info=file_info,
+                msg_id=msg_id,
+                timestamp=timestamp,
+            )
+
+            ack_msg = make_chat_ack(
+                msg_id=msg_id,
+                status="DELIVERED",
+                device_id=self.identity.device_id,
+                device_name=self.identity.device_name,
+            )
+            send_control_msg(sock, ack_msg)
+            notify_user(f"PASS: {sender_name}", text[:100])
+            logger.info(f"Chat message received from {sender_name}: {text}")
+            return
+
         if action != MSG_HANDSHAKE_INIT:
-            send_control_msg(sock, make_error("INVALID_HANDSHAKE", "Expected HANDSHAKE_INIT or PAIR_REQUEST"))
+            send_control_msg(sock, make_error("INVALID_HANDSHAKE", "Expected HANDSHAKE_INIT, PAIR_REQUEST, or CHAT_MSG"))
             return
 
         sender_id = init_msg.get("sender_id", "")
@@ -315,3 +352,21 @@ class ReceiverServer:
         complete_msg = recv_control_msg(sock)
         logger.debug(f"Transfer {manifest.transfer_id} successfully completed from {sender_name}")
         notify_user("PASS: Files Received!", f"Saved {manifest.file_count} file(s) from '{sender_name}' to {download_base.name}")
+
+        try:
+            from passx.core.chat_store import ChatStore
+            from passx.cli.formatters import format_bytes
+            chat_store = ChatStore(self.config)
+            names = ", ".join(item.relative_path for item in manifest.items[:2])
+            if len(manifest.items) > 2:
+                names += f" (+{len(manifest.items) - 2} more)"
+            chat_store.save_message(
+                peer_id=sender_id,
+                peer_name=sender_name,
+                sender="peer",
+                text=f"📁 Received: {names} ({format_bytes(manifest.total_bytes)})",
+                msg_type="file",
+                file_info={"file_count": manifest.file_count, "total_bytes": manifest.total_bytes},
+            )
+        except Exception as e:
+            logger.debug(f"Error logging file transfer in chat store: {e}")
