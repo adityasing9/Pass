@@ -14,7 +14,12 @@ PASS allows nearby devices to discover each other automatically and transfer fil
 
 - **Zero Manual Network Configuration**: No need to type IP addresses, port numbers, or setup SSH/SMB shares. PASS automatically discovers nearby peers.
 - **Direct Local P2P Transfer**: Data travels directly from machine to machine over local Wi-Fi or Ethernet. Transfers function completely offline without Internet access.
-- **High-Performance Streaming**: Files are transferred in 256 KB streaming chunks. Multi-gigabyte files (1 GB, 5 GB, 10 GB+) stream without consuming system RAM.
+- **WhatsApp of the Terminal (Live P2P Chat)**: Chat in real time (`passx chat`), send quick one-liners (`passx msg`), share clipboard contents (`passx clip`), and send files directly from inside the chat (`/send <path>`) with rich chat bubbles and desktop/mobile push notifications.
+- **Device Renaming & Friendly Nicknames**: Assign friendly aliases (`passx rename Pixel-7 "My Phone"`) and reference devices everywhere by nickname instead of raw hostnames or IP addresses.
+- **Always-Visible IP & Network Status**: View your local IP address instantly in the terminal banner, status reports (`passx status`), settings, peer discovery tables, and paired device lists.
+- **24/7 Background Receiver Service**: Run `passx daemon start` with persistent Android wake-lock support so files and messages arrive seamlessly in the background without waiting in receiving prompts.
+- **Zero-Prompt Auto-Accept & 1-Click Pairing**: Pair trusted devices once (`passx pair`) or toggle zero-prompt acceptance (`passx auto-accept on`) for instant transfers.
+- **High-Performance Streaming**: Files are transferred in 256 KB streaming chunks (or 2 MB turbo mode). Multi-gigabyte files (1 GB, 5 GB, 10 GB+) stream without consuming system RAM.
 - **Cryptographic File Integrity**: Every transferred file is verified end-to-end with SHA-256 hashes computed on the fly.
 - **Resumable Transfers**: Interrupted transfers automatically resume from the last verified byte offset rather than restarting from scratch.
 - **Strong Transport Security**: Direct connections are encrypted with TLS 1.3/1.2 using self-signed ECDSA (P-256) certificates. Certificate fingerprints are pinned against advertised discovery beacons to defend against MITM attacks.
@@ -157,19 +162,20 @@ passx
 ```
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ PASS — Peer-to-peer Automated Secure Sharing                                │
-│ Version: 0.1.0 | Device: AADI-PC | Platform: windows                        │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ PASS — Peer-to-peer Automated Secure Sharing                                    │
+│ Version: 0.5.1 | Device: AADI-PC | IP: 192.168.1.50 | Platform: windows         │
+└─────────────────────────────────────────────────────────────────────────────────┘
 
 1. Send file(s) or folder
 2. Receive mode (Wait for transfers)
 3. Discover nearby PASS devices
-4. Manage trusted devices
-5. Device settings & status
-6. Exit
+4. Pair & manage trusted devices
+5. 💬 Terminal Chat (WhatsApp Mode)
+6. Background service & settings
+7. Exit
 
-Select an option [1/2/3/4/5/6] (1):
+Select an option [1/2/3/4/5/6/7] (1):
 ```
 
 #### Step-by-Step: How to Send a File in the Menu:
@@ -222,11 +228,13 @@ passx send document.pdf photo.jpg C:\Users\AADI\Desktop\my_folder\
 ```
 PASS automatically walks folders recursively and preserves the entire directory tree on the receiving device!
 
-#### 3. Send directly to a specific device (skip selection prompt):
+#### 3. Send directly to a specific device, IP, or nickname:
 ```powershell
 passx send dataset.tar.gz --to LINUX-PC
-# Or direct to IP address without discovery:
+# Direct to IP address without discovery:
 passx send dataset.tar.gz --to 192.168.1.105
+# Or direct to a friendly nickname:
+passx send dataset.tar.gz --to "My Phone"
 ```
 
 #### 4. High-Speed Turbo Streaming (`--turbo`):
@@ -244,12 +252,12 @@ To automatically accept all incoming transfers without confirmation prompts (use
 passx receive --yes
 ```
 
-#### 5. Discover nearby devices:
+#### 6. Discover nearby devices:
 ```powershell
 passx devices
 ```
 
-#### 6. Check system status & network interfaces:
+#### 7. Check system status & local IP address:
 ```powershell
 passx status
 ```
@@ -379,7 +387,50 @@ Once a nickname is set, PASS will recognize it everywhere:
 passx rename --list              # View all configured nicknames
 passx rename --remove "My Phone" # Remove nickname
 ```
+The list displays each device's friendly nickname, underlying hostname or target, active IP address, and TLS fingerprint:
+```text
+Configured Device Nicknames (2)
+┌─────────────┬───────────────────────────┬───────────────┬──────────────────┐
+│ Nickname    │ Target (Device Name / IP) │ IP Address    │ Fingerprint      │
+├─────────────┼───────────────────────────┼───────────────┼──────────────────┤
+│ My Phone    │ IQOO-NEO-10               │ 192.168.1.105 │ f2e4b6c8a0d2e4f6 │
+│ Work Laptop │ 192.168.1.84              │ 192.168.1.84  │ 7b9a0c2e3f4d5e6a │
+└─────────────┴───────────────────────────┴───────────────┴──────────────────┘
+```
 *(Running `passx rename` with no arguments opens the interactive nickname manager wizard!)*
+
+---
+
+### Always-Visible IP Addresses & Network Status
+
+Never guess what IP address your PC or phone is using on the Wi-Fi. PASS automatically detects and displays your active local IPv4 address across the application:
+
+1. **Header Banner**: Every interactive screen, menu, and status report displays your active IP address in the header:
+   ```text
+   Version: 0.5.1 | Device: AADI-PC | IP: 192.168.1.50 | Platform: windows
+   ```
+2. **System Status (`passx status`)**:
+   ```powershell
+   passx status
+   ```
+   Outputs:
+   ```text
+   Device Information:
+     Device Name:      AADI-PC
+     Local IP Address: 192.168.1.50
+     Device ID:        4f103091-84d8-4172-aef0-276442237b9c
+     Platform:         windows
+     TLS Fingerprint:  a1b2c3d4e5f60718...
+     Config Directory: C:\Users\AADI\.pass
+     Downloads Folder: C:\Users\AADI\Desktop
+     Discovery Port:   42424 (UDP)
+     Transfer Port:    42425 (TCP)
+     Trusted Devices:  2
+
+   Active Network Interfaces (1):
+     • Wi-Fi: IP 192.168.1.50 (Broadcast: 192.168.1.255)
+   ```
+3. **Peer Discovery & Trusted Tables**: All tables (`passx devices`, `passx trust`, `passx pair`, `passx rename --list`) display the live IPv4 address of every peer alongside hostnames.
 
 ---
 
@@ -427,10 +478,21 @@ passx devices
 
 ### Managing Trusted Devices
 
-List currently trusted peers:
+List currently trusted peers along with their active network IP addresses:
 
 ```bash
 passx trust
+```
+
+Output:
+```text
+Trusted Devices (2)
+┌─────────────┬───────────────┬──────────────────┬─────────────────────┬──────────────────┐
+│ Device Name │ IP Address    │ Device ID        │ Added At            │ Fingerprint      │
+├─────────────┼───────────────┼──────────────────┼─────────────────────┼──────────────────┤
+│ LINUX-PC    │ 192.168.1.84  │ a1b2c3d4e5f6...  │ 2026-09-23 18:00    │ 7b9a0c2e3f4d5e6a │
+│ IQOO-NEO-10 │ 192.168.1.105 │ 8e7d6c5b4a3...   │ 2026-09-23 18:05    │ f2e4b6c8a0d2e4f6 │
+└─────────────┴───────────────┴──────────────────┴─────────────────────┴──────────────────┘
 ```
 
 Remove trust from a device:
@@ -550,6 +612,9 @@ python -m pytest tests/ -v
 ```
 
 ### Test Coverage
+- `test_aliases.py`: Nickname assignment, IP persistence, resolution of device names and IPs, and CLI alias management.
+- `test_chat.py`: Real-time P2P terminal chat, message wire framing, inline attachments, clipboard sync, and notification dispatching.
+- `test_platform.py`: Cross-platform directory paths, native clipboard integration, and Android Termux wake-lock management.
 - `test_identity.py`: UUID generation, config persistence, and ECDSA certificate creation.
 - `test_sanitizer.py`: Directory traversal and malicious path injection vectors.
 - `test_protocol.py`: Wire framing, binary headers, and message validation.
@@ -557,7 +622,7 @@ python -m pytest tests/ -v
 - `test_manifest.py`: Single file, multi-file, and directory hierarchy bundling.
 - `test_resume.py`: Partial transfer state and resume offset calculation.
 - `test_transfer_e2e.py`: Loopback TLS transfer integration tests, fingerprint verification, and resumption.
-- `test_cli.py`: Command line parsing and execution.
+- `test_cli.py`: Command line parsing, options, and execution.
 
 ---
 
