@@ -17,6 +17,26 @@ def get_local_ip_for_peer(peer_ip: str) -> str:
         s.close()
 
 
+def get_primary_ip() -> str:
+    """Determine the primary non-loopback IPv4 address of this machine"""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        if ip and not ip.startswith("127."):
+            return ip
+    except Exception:
+        pass
+    finally:
+        s.close()
+
+    ifaces = get_active_ipv4_interfaces()
+    for _, ip, _ in ifaces:
+        if not ip.startswith("127."):
+            return ip
+    return "127.0.0.1"
+
+
 def get_active_ipv4_interfaces() -> List[Tuple[str, str, str]]:
     """
     Returns list of (interface_name, ip_address, broadcast_address).

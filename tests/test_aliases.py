@@ -88,3 +88,27 @@ def test_rename_parser():
     assert args.command == "nickname"
     assert args.target == "192.168.1.100"
     assert args.nickname == "Living Room TV"
+
+
+def test_alias_manager_with_ip(tmp_path):
+    config = ConfigManager(config_dir=tmp_path)
+    mgr = AliasManager(config)
+
+    # Set nickname with explicit IP
+    mgr.set_alias("Pixel-7", "My Phone", device_id="dev-2", ip="192.168.1.105")
+    resolved = mgr.resolve_target("My Phone")
+    assert resolved is not None
+    assert resolved["ip"] == "192.168.1.105"
+
+    # Set nickname where target is an IP
+    mgr.set_alias("192.168.1.200", "Printer")
+    printer = mgr.resolve_target("Printer")
+    assert printer is not None
+    assert printer["ip"] == "192.168.1.200"
+
+
+def test_get_primary_ip():
+    from passx.network.interfaces import get_primary_ip
+    ip = get_primary_ip()
+    assert isinstance(ip, str)
+    assert len(ip.split(".")) == 4

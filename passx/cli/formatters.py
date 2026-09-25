@@ -1,5 +1,5 @@
 """Terminal formatters, banners, and table rendering"""
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -36,11 +36,19 @@ def format_eta(seconds: float) -> str:
     return f"{minutes}m {secs}s"
 
 
-def print_banner(device_name: str, platform_name: str) -> None:
+def print_banner(device_name: str, platform_name: str, local_ip: Optional[str] = None) -> None:
     """Print standard PASS CLI header"""
+    if not local_ip:
+        try:
+            from passx.network.interfaces import get_primary_ip
+            local_ip = get_primary_ip()
+        except Exception:
+            local_ip = None
+
+    ip_display = f" | IP: [bold green]{local_ip}[/bold green]" if local_ip else ""
     text = (
         f"[bold cyan]PASS[/bold cyan] — [italic]Peer-to-peer Automated Secure Sharing[/italic]\n"
-        f"Version: [green]{__version__}[/green] | Device: [bold yellow]{device_name}[/bold yellow] | Platform: [blue]{platform_name}[/blue]"
+        f"Version: [green]{__version__}[/green] | Device: [bold yellow]{device_name}[/bold yellow]{ip_display} | Platform: [blue]{platform_name}[/blue]"
     )
     console.print(Panel(text, border_style="cyan"))
 
@@ -82,24 +90,31 @@ def print_trusted_table(trusted_devices: List[Dict[str, Any]]) -> None:
 
     table = Table(title=f"Trusted Devices ({len(trusted_devices)})", border_style="green")
     table.add_column("Device Name", style="bold green")
+    table.add_column("IP Address", style="cyan")
     table.add_column("Device ID", style="dim")
     table.add_column("Fingerprint", style="dim")
-    table.add_column("Trusted At", style="cyan")
+    table.add_column("Trusted At", style="dim")
 
     for d in trusted_devices:
         fp_short = d.get("fingerprint", "")[:16] + "..."
         dev_name = d.get("device_name", "Unknown")
         dev_id = d.get("device_id", "")
+        ip_addr = d.get("ip") or "LAN/DHCP"
         try:
             from passx.core.aliases import AliasManager
             from passx.core.config import ConfigManager
-            alias = AliasManager(ConfigManager()).get_alias(dev_id) or AliasManager(ConfigManager()).get_alias(dev_name)
+            alias_mgr = AliasManager(ConfigManager())
+            alias = alias_mgr.get_alias(dev_id) or alias_mgr.get_alias(dev_name)
             if alias and alias.lower() != dev_name.lower():
                 dev_name = f"{alias} ({dev_name})"
+            alias_entry = alias_mgr.resolve_target(alias or dev_name)
+            if alias_entry and alias_entry.get("ip"):
+                ip_addr = alias_entry.get("ip")
         except Exception:
             pass
         table.add_row(
             dev_name,
+            ip_addr,
             dev_id[:8] + "...",
             fp_short,
             d.get("trusted_at", "")[:19],

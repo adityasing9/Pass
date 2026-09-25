@@ -41,6 +41,7 @@ class AliasManager:
         nickname: str,
         device_id: Optional[str] = None,
         fingerprint: Optional[str] = None,
+        ip: Optional[str] = None,
     ) -> None:
         """
         Assign a nickname to a remote device.
@@ -48,10 +49,15 @@ class AliasManager:
         """
         aliases = self._load()
         key = (device_id or target).strip()
+        resolved_ip = (ip or "").strip()
+        if not resolved_ip and target.count(".") == 3:
+            resolved_ip = target.strip()
+
         aliases[key] = {
             "key": key,
             "nickname": nickname.strip(),
             "target": target.strip(),
+            "ip": resolved_ip,
             "device_id": (device_id or "").strip(),
             "fingerprint": (fingerprint or "").strip(),
         }

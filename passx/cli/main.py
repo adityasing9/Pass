@@ -245,10 +245,14 @@ def cmd_untrust(args, trust_manager: TrustManager) -> int:
 
 def cmd_status(args, config: ConfigManager, identity: DeviceIdentity, trust_manager: TrustManager) -> int:
     """Handle 'passx status'"""
-    print_banner(identity.device_name, current_platform.get_platform_name())
+    from passx.network.interfaces import get_primary_ip
+    primary_ip = get_primary_ip()
+
+    print_banner(identity.device_name, current_platform.get_platform_name(), local_ip=primary_ip)
 
     console.print("[bold]Device Information:[/bold]")
     console.print(f"  Device Name:      [cyan]{identity.device_name}[/cyan]")
+    console.print(f"  Local IP Address: [bold green]{primary_ip}[/bold green]")
     console.print(f"  Device ID:        [dim]{identity.device_id}[/dim]")
     console.print(f"  Platform:         [blue]{current_platform.get_platform_name()}[/blue]")
     console.print(f"  TLS Fingerprint:  [dim]{identity.fingerprint}[/dim]")
@@ -640,9 +644,11 @@ def cmd_rename(args, config: ConfigManager, identity: DeviceIdentity, trust_mana
         table = Table(title=f"Device Nicknames ({len(aliases)})", border_style="cyan")
         table.add_column("Nickname", style="bold green")
         table.add_column("Original Target", style="cyan")
+        table.add_column("IP Address", style="magenta")
         table.add_column("Device ID / Key", style="dim")
         for a in aliases:
-            table.add_row(a.get("nickname", ""), a.get("target", ""), a.get("key", "")[:16] + "...")
+            ip_val = a.get("ip") or (a.get("target") if a.get("target", "").count(".") == 3 else "Auto/LAN")
+            table.add_row(a.get("nickname", ""), a.get("target", ""), ip_val, a.get("key", "")[:16] + "...")
         console.print(table)
         return 0
 
@@ -679,20 +685,24 @@ def cmd_rename(args, config: ConfigManager, identity: DeviceIdentity, trust_mana
     if target and nickname:
         dev_id = ""
         dev_fp = ""
+        dev_ip = ""
         with DiscoveryEngine(config, identity) as discovery:
             peer = discovery.find_peer(target)
             if peer:
                 dev_id = peer.device_id
                 dev_fp = peer.fingerprint
+                dev_ip = peer.ip
         if not dev_id:
             for t in trust_manager.list_trusted():
                 if target.lower() in t.get("device_name", "").lower() or target == t.get("device_id"):
                     dev_id = t.get("device_id")
                     dev_fp = t.get("fingerprint")
+                    dev_ip = t.get("ip", "")
                     break
 
-        alias_mgr.set_alias(target, nickname, device_id=dev_id, fingerprint=dev_fp)
-        console.print(f"[bold green]✓ Nickname set:[/bold green] '{target}' will now appear as '[bold cyan]{nickname}[/bold cyan]' everywhere in PASS!")
+        alias_mgr.set_alias(target, nickname, device_id=dev_id, fingerprint=dev_fp, ip=dev_ip)
+        ip_info = f" ({dev_ip})" if dev_ip else ""
+        console.print(f"[bold green]✓ Nickname set:[/bold green] '{target}'{ip_info} will now appear as '[bold cyan]{nickname}[/bold cyan]' everywhere in PASS!")
         return 0
 
     # One argument: passx rename "NewName"
@@ -714,8 +724,8 @@ def cmd_rename(args, config: ConfigManager, identity: DeviceIdentity, trust_mana
                 print_devices_table(peers)
                 p_idx = Prompt.ask("Select device number", choices=[str(i) for i in range(1, len(peers)+1)], default="1")
                 picked = peers[int(p_idx)-1]
-                alias_mgr.set_alias(picked.device_name, nick, device_id=picked.device_id, fingerprint=picked.fingerprint)
-                console.print(f"[bold green]✓ Nickname set:[/bold green] '{picked.device_name}' is now nicknamed '[bold cyan]{nick}[/bold cyan]'!")
+                alias_mgr.set_alias(picked.device_name, nick, device_id=picked.device_id, fingerprint=picked.fingerprint, ip=picked.ip)
+                console.print(f"[bold green]✓ Nickname set:[/bold green] '{picked.device_name}' ({picked.ip}) is now nicknamed '[bold cyan]{nick}[/bold cyan]'!")
                 return 0
             else:
                 remote = Prompt.ask("Enter device name or IP to assign nickname to").strip()
@@ -750,8 +760,8 @@ def cmd_rename(args, config: ConfigManager, identity: DeviceIdentity, trust_mana
                 picked = peers[int(p_idx)-1]
                 nick = Prompt.ask(f"Enter nickname for '{picked.device_name}'").strip()
                 if nick:
-                    alias_mgr.set_alias(picked.device_name, nick, device_id=picked.device_id, fingerprint=picked.fingerprint)
-                    console.print(f"[bold green]✓ Nickname set:[/bold green] '{picked.device_name}' is now nicknamed '[bold cyan]{nick}[/bold cyan]'!")
+                    alias_mgr.set_alias(picked.device_name, nick, device_id=picked.device_id, fingerprint=picked.fingerprint, ip=picked.ip)
+                    console.print(f"[bold green]✓ Nickname set:[/bold green] '{picked.device_name}' ({picked.ip}) is now nicknamed '[bold cyan]{nick}[/bold cyan]'!")
             elif p_idx:
                 nick = Prompt.ask(f"Enter nickname for '{p_idx}'").strip()
                 if nick:
@@ -770,12 +780,14 @@ def cmd_rename(args, config: ConfigManager, identity: DeviceIdentity, trust_mana
             console.print("[yellow]No nicknames configured yet.[/yellow]")
         else:
             from rich.table import Table
-            table = Table(title="Device Nicknames", border_style="cyan")
+            table = Table(title=f"Device Nicknames ({len(aliases)})", border_style="cyan")
             table.add_column("Nickname", style="bold green")
             table.add_column("Original Target", style="cyan")
+            table.add_column("IP Address", style="magenta")
             table.add_column("Device ID / Key", style="dim")
             for a in aliases:
-                table.add_row(a.get("nickname", ""), a.get("target", ""), a.get("key", "")[:16] + "...")
+                ip_val = a.get("ip") or (a.get("target") if a.get("target", "").count(".") == 3 else "Auto/LAN")
+                table.add_row(a.get("nickname", ""), a.get("target", ""), ip_val, a.get("key", "")[:16] + "...")
             console.print(table)
     elif choice == "4":
         aliases = alias_mgr.list_aliases()

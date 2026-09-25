@@ -265,12 +265,14 @@ def _handle_settings_interactive(config: ConfigManager, identity: DeviceIdentity
     is_running, pid, log_path = get_daemon_status(config.config_dir)
     daemon_status = f"[bold green]ACTIVE (PID {pid})[/bold green]" if is_running else "[yellow]OFF[/yellow]"
     auto_acc = config.get("auto_accept_all", False)
-    auto_status = "[bold green]ON[/bold green]" if auto_acc else "[yellow]OFF[/yellow]"
+    from passx.network.interfaces import get_primary_ip
+    primary_ip = get_primary_ip()
 
     console.print("\n[bold cyan]Background Service & Settings[/bold cyan]")
     console.print(f"Background Receiver: {daemon_status}")
     console.print(f"Auto-Accept Mode:    {auto_status}")
     console.print(f"Device Name:         [cyan]{identity.device_name}[/cyan]")
+    console.print(f"Local IP Address:    [bold green]{primary_ip}[/bold green]")
     console.print(f"Downloads Folder:    [cyan]{config.download_dir}[/cyan]")
     console.print(f"Transfer Port:       [yellow]{config.transfer_port}[/yellow]")
     console.print()
